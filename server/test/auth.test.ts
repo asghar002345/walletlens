@@ -14,7 +14,7 @@ describe("health", () => {
   it("reports ok and db status", async () => {
     const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ ok: true, db: "up" });
+    expect(res.body).toMatchObject({ ok: true, db: "up", mockMode: true });
   });
 });
 
