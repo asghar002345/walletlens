@@ -36,7 +36,7 @@ describe("analyses (mock mode, default)", () => {
     const agent = await loggedInAgent(app);
     const { body } = await agent.post("/api/analyses").send({ kind: "tx", chainId: SEPOLIA, value: APPROVE_TX });
     expect(body.analysis.trace.provider).toBe("mock");
-    expect(body.analysis.trace.draft).toMatch(/unlimited allowance/);
+    expect(body.analysis.verdict.riskLevel).toBe("high");
     const calls = await agent.get(`/api/analyses/${body.analysis.id}/toolcalls`);
     expect(calls.body.toolCalls.map((t: { tool: string }) => t.tool)).toEqual([
       "getTx",

@@ -94,8 +94,18 @@ describe("local retrieval (default, offline)", () => {
   it("returns nothing for an unrelated query and respects tag filters", async () => {
     const r = new LocalRetriever();
     expect((await r.search("banana smoothie recipe", 3)).notes).toEqual([]);
-    const tagged = await r.search("approval", 5, ["erc1155"]);
+    const tagged = await r.search("approval", 5, { tags: ["erc1155"] });
     expect(tagged.notes.every((n) => n.tags.includes("erc1155"))).toBe(true);
+  });
+
+  it("boosts notes whose tags match decodeCalldata flags, without pulling in unrelated notes", async () => {
+    const r = new LocalRetriever();
+    const q = "unlimited ERC-20 approve allowance";
+    const plain = await r.search(q, 3);
+    expect(plain.notes[0].noteId).not.toBe("std-erc20-unlimited");
+    const boosted = await r.search(q, 3, { boostTags: ["unlimited"] });
+    expect(boosted.notes[0].noteId).toBe("std-erc20-unlimited");
+    expect((await r.search("banana smoothie recipe", 3, { boostTags: ["unlimited"] })).notes).toEqual([]);
   });
 
   it("retrieveNotes tool validates args and logs the call", async () => {

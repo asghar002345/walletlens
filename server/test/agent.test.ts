@@ -45,7 +45,9 @@ describe("runAgent with the mock provider", () => {
     );
     const tools = (await ToolCall.find({ analysisId }).sort({ _id: 1 })).map((t) => t.tool);
     expect(tools).toEqual(["getTx", "decodeCalldata", "lookupContract", "getTokenApprovals", "retrieveNotes"]);
-    expect(run.draft).toMatch(/unlimited allowance/);
+    expect(run.verdict.riskLevel).toBe("high");
+    expect(run.verdictStatus).toBe("valid");
+    expect(run.verdict.citations).toContain("std-erc20-unlimited");
     expect(run.steps.at(-1)?.final).toBe(true);
     expect(run.totals.toolCalls).toBe(5);
     expect(run.citations.length).toBeGreaterThan(0);
@@ -60,8 +62,9 @@ describe("runAgent with the mock provider", () => {
       new MockProvider(),
       ctx,
     );
-    expect(run.draft).toMatch(/instruction-like text/);
-    expect(run.draft).not.toMatch(/\bSAFE\b/);
+    expect(run.verdict.riskLevel).toBe("high");
+    expect(run.verdict.reasons.map((r) => r.text).join(" ")).toMatch(/instruction-like text/);
+    expect(run.verdict.citations).toContain("scam-token-name-injection");
   });
 
   it("says it doesn't know when there is no evidence", async () => {
@@ -71,7 +74,8 @@ describe("runAgent with the mock provider", () => {
       new MockProvider(),
       ctx,
     );
-    expect(run.draft).toMatch(/I don't know/);
+    expect(run.verdict.riskLevel).toBe("unknown");
+    expect(run.verdict.summary).toMatch(/I don't know/);
   });
 });
 
@@ -83,7 +87,9 @@ describe("runAgent loop mechanics", () => {
     ]);
     const analysisId = new Types.ObjectId();
     const run = await runAgent(analysisId, { kind: "tx" }, p, ctx);
-    expect(run.draft).toBe("final answer");
+    // "final answer" is not JSON, the repair reply ("done") isn't either, so the verdict falls back to unknown.
+    expect(run.verdictStatus).toBe("fallback");
+    expect(run.verdict.riskLevel).toBe("unknown");
     const toolMsg = p.seen[1].find((m) => m.role === "tool");
     expect(toolMsg && "content" in toolMsg && JSON.parse(toolMsg.content)).toMatchObject({
       untrusted_tool_output: { ok: false },
@@ -98,7 +104,8 @@ describe("runAgent loop mechanics", () => {
     }));
     const run = await runAgent(new Types.ObjectId(), {}, new ScriptedProvider(loop), ctx);
     expect(run.steps).toHaveLength(MAX_STEPS);
-    expect(run.draft).toMatch(/I don't know/);
+    expect(run.verdict).toMatchObject({ riskLevel: "unknown" });
+    expect(run.verdict.summary).toMatch(/I don't know/);
   });
 
   it("falls back to the mock model with a notice when the provider cap is hit", async () => {
@@ -111,6 +118,6 @@ describe("runAgent loop mechanics", () => {
     );
     expect(run.provider).toBe("mock");
     expect(run.notices.join(" ")).toMatch(/groq day cap reached/);
-    expect(run.draft).toMatch(/contract/);
+    expect(run.verdictStatus).toBe("valid");
   });
 });

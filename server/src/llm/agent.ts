@@ -4,6 +4,7 @@ import { runTool } from "../tools/runner.js";
 import { QuotaExceededError } from "../services/quota.js";
 import { MockProvider } from "./mock.js";
 import type { ChatMessage, LlmProvider } from "./types.js";
+import { checkVerdict, unknownVerdict, VERDICT_FORMAT, type Verdict } from "../verdict/schema.js";
 
 export const MAX_STEPS = 8;
 
@@ -15,7 +16,11 @@ Rules:
 - Base every statement on tool results. If there is no evidence, say "I don't know".
 - Use retrieveNotes for background on scam patterns and standards, and cite notes you rely on as [noteId].
   Only cite noteIds that retrieveNotes returned.
-- Call tools one at a time until you have enough evidence, then answer briefly.`;
+- Call tools one at a time until you have enough evidence.
+- Then answer with ONLY a JSON object (no prose) in this shape:
+  ${VERDICT_FORMAT}
+  Every reason must list evidence: "tool:<name>" for a tool that returned data, or "note:<noteId>" for a retrieved note.
+  citations lists the noteIds you relied on. If there is no evidence, use riskLevel "unknown" and say "I don't know" in the summary.`;
 
 export interface TraceStep {
   step: number;
@@ -36,10 +41,15 @@ export interface RetrievedRef {
 }
 
 export interface AgentRun {
+  /** Raw final model text (kept for debugging). */
   draft: string;
+  verdict: Verdict;
+  /** "valid" first time, "repaired" after one retry, or "fallback" when it was replaced by an unknown verdict. */
+  verdictStatus: "valid" | "repaired" | "fallback";
+  verdictErrors: string[];
   /** Every note any retrieveNotes call returned (deduped, best score kept). */
   retrieved: RetrievedRef[];
-  /** Retrieved noteIds the answer actually cites as [noteId]. Unretrieved ids are dropped. */
+  /** Retrieved noteIds the verdict cites. */
   citations: string[];
   steps: TraceStep[];
   provider: string;
@@ -70,20 +80,22 @@ export async function runAgent(
   let active = provider;
   let draft = "";
   const retrieved = new Map<string, RetrievedRef>();
+  const okTools = new Set<string>();
 
-  for (let step = 1; step <= MAX_STEPS; step++) {
+  const callModel = async (withTools: boolean) => {
     const started = Date.now();
+    const offered = withTools ? tools : [];
     let res;
     try {
-      res = await active.chat(messages, tools);
+      res = await active.chat(messages, offered);
     } catch (err) {
       if (!(err instanceof QuotaExceededError) || active.name === "mock") throw err;
       notices.push(`${active.name} ${err.window} cap reached; continued with the offline mock model.`);
       active = new MockProvider();
-      res = await active.chat(messages, tools);
+      res = await active.chat(messages, offered);
     }
     const trace: TraceStep = {
-      step,
+      step: steps.length + 1,
       provider: active.name,
       model: res.model,
       latencyMs: Date.now() - started,
@@ -93,8 +105,12 @@ export async function runAgent(
       final: res.toolCalls.length === 0,
     };
     steps.push(trace);
-    messages.push({ role: "assistant", content: res.content, toolCalls: res.toolCalls });
+    messages.push({ role: "assistant", content: res.content, toolCalls: withTools ? res.toolCalls : [] });
+    return { res, trace };
+  };
 
+  for (let step = 1; step <= MAX_STEPS; step++) {
+    const { res, trace } = await callModel(true);
     if (res.toolCalls.length === 0) {
       draft = res.content ?? "";
       break;
@@ -102,6 +118,7 @@ export async function runAgent(
     for (const call of res.toolCalls) {
       const r = await runTool(analysisId, call.name, call.args, ctx);
       if (r.notice && !notices.includes(r.notice)) notices.push(r.notice);
+      if (r.ok && call.name !== "retrieveNotes") okTools.add(call.name);
       if (r.ok && call.name === "retrieveNotes") {
         for (const n of (r.data as { notes: RetrievedRef[] }).notes) {
           const prev = retrieved.get(n.noteId);
@@ -118,17 +135,46 @@ export async function runAgent(
       });
     }
   }
+
+  // Structured verdict: validate, repair once, else fall back to "unknown".
+  const evidence = { okTools, retrievedNoteIds: new Set(retrieved.keys()) };
+  let verdict: Verdict;
+  let verdictStatus: AgentRun["verdictStatus"] = "valid";
+  let verdictErrors: string[] = [];
   if (!draft) {
-    draft = "I don't know: the analysis stopped before reaching a conclusion.";
     notices.push(`Stopped after ${MAX_STEPS} model steps.`);
+    verdict = unknownVerdict("The analysis stopped before reaching a conclusion.");
+    verdictStatus = "fallback";
+  } else {
+    let check = checkVerdict(draft, evidence);
+    if (!check.ok) {
+      verdictErrors = check.errors;
+      messages.push({
+        role: "user",
+        content: `Your answer failed validation:\n- ${check.errors.join("\n- ")}\nReply again with ONLY the corrected JSON verdict. Do not call tools.`,
+      });
+      const { res } = await callModel(false);
+      draft = res.content ?? "";
+      check = checkVerdict(draft, evidence);
+      verdictStatus = "repaired";
+      if (!check.ok) verdictErrors = [...verdictErrors, ...check.errors];
+    }
+    if (check.ok) verdict = check.verdict;
+    else {
+      verdictStatus = "fallback";
+      verdict = unknownVerdict("The model's answer could not be validated against the verdict schema.");
+      notices.push("The model's verdict failed validation twice; showing an unknown verdict instead.");
+    }
   }
 
   const sum = (k: "inputTokens" | "outputTokens" | "latencyMs") => steps.reduce((n, s) => n + s[k], 0);
-  const cited = [...draft.matchAll(/\[([a-z0-9-]+)\]/g)].map((m) => m[1]);
   return {
     draft,
+    verdict,
+    verdictStatus,
+    verdictErrors,
     retrieved: [...retrieved.values()].sort((a, b) => b.score - a.score),
-    citations: [...new Set(cited)].filter((id) => retrieved.has(id)),
+    citations: verdict.citations,
     steps,
     provider: active.name,
     notices,

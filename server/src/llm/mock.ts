@@ -81,32 +81,172 @@ export class MockProvider implements LlmProvider {
     if (decoded?.kind === "unknown") terms.push("unknown function selector blind signing");
     if (suspicious(contract)) terms.push("token name instructions prompt injection metadata");
     if (approvals?.approvals?.some((a) => a.unlimited)) terms.push("unlimited approval revoke");
-    if (terms.length) add("retrieveNotes", { query: terms.join(" "), k: 3 });
+    // Boost notes whose tags match what decodeCalldata / lookupContract flagged.
+    const boostTags = [
+      ...(decoded?.flags?.includes("unlimited-approval") ? ["unlimited"] : []),
+      ...(decoded?.flags?.includes("operator-approval-all") ? ["operator"] : []),
+      ...(decoded?.flags?.includes("offchain-signature-approval") ? ["permit"] : []),
+      ...(decoded?.kind === "native-transfer" ? ["native"] : []),
+      ...(decoded?.kind === "unknown" ? ["decoding"] : []),
+      ...(suspicious(contract) ? ["prompt-injection"] : []),
+    ];
+    if (terms.length)
+      add("retrieveNotes", { query: terms.join(" "), k: 3, ...(boostTags.length ? { boostTags } : {}) });
   }
 
+  /** Deterministic rules → a verdict that passes the same schema and evidence checks as a real model's. */
   private draft(input: Input, results: Map<string, unknown>): string {
-    const decoded = unwrap(results.get("decodeCalldata")) as
-      { kind?: string; functionName?: string; standard?: string; flags?: string[] } | undefined;
-    const contract = unwrap(results.get("lookupContract")) as ContractView | undefined;
-    const notes = (unwrap(results.get("retrieveNotes")) as { notes?: { noteId: string }[] } | undefined)?.notes ?? [];
-    const parts: string[] = [];
-    if (input.kind === "address")
-      parts.push(contract?.isContract ? "The address is a contract." : "The address is not a contract.");
-    if (decoded?.kind === "native-transfer") parts.push("Plain native-token transfer with no contract call.");
-    if (decoded?.kind === "call") parts.push(`Calls ${decoded.standard} ${decoded.functionName}.`);
-    if (decoded?.kind === "unknown") parts.push("The function selector is not recognised, so its effect is unknown.");
-    if (decoded?.flags?.includes("unlimited-approval")) parts.push("It grants an unlimited allowance to the spender.");
-    if (suspicious(contract))
-      parts.push("The token metadata contains instruction-like text, which was ignored and is itself a warning sign.");
-    if (parts.length === 0) parts.push("Not enough evidence to explain this. I don't know.");
-    else if (notes.length)
-      parts.push(
-        `Background: ${notes
-          .slice(0, 2)
-          .map((n) => `[${n.noteId}]`)
-          .join(" ")}.`,
-      );
-    return `Draft (mock): ${parts.join(" ")}`;
+    const ok = (name: string) => (results.get(name) as Wrapped | null)?.untrusted_tool_output?.ok === true;
+    const decoded = ok("decodeCalldata")
+      ? (unwrap(results.get("decodeCalldata")) as
+          { kind?: string; functionName?: string; standard?: string; flags?: string[]; args?: unknown[] } | undefined)
+      : undefined;
+    const contract = ok("lookupContract")
+      ? (unwrap(results.get("lookupContract")) as ContractView | undefined)
+      : undefined;
+    const approvals = ok("getTokenApprovals")
+      ? (unwrap(results.get("getTokenApprovals")) as { approvals?: { unlimited: boolean }[] } | undefined)
+      : undefined;
+    const tx = ok("getTx")
+      ? (unwrap(results.get("getTx")) as { found?: boolean; value?: string } | undefined)
+      : undefined;
+    const notes = ok("retrieveNotes")
+      ? ((unwrap(results.get("retrieveNotes")) as { notes?: { noteId: string; tags: string[] }[] } | undefined)
+          ?.notes ?? [])
+      : [];
+    const noteFor = (...tags: string[]) => notes.find((n) => tags.some((t) => n.tags.includes(t)))?.noteId;
+    const withNote = (evidence: string[], ...tags: string[]) => {
+      const id = noteFor(...tags);
+      return id ? [...evidence, `note:${id}`] : evidence;
+    };
+
+    const actions: { kind: string; description: string }[] = [];
+    const reasons: { text: string; evidence: string[] }[] = [];
+    let risk: "low" | "medium" | "high" | "unknown" = "unknown";
+    const raise = (r: "low" | "medium" | "high") => {
+      const order = ["unknown", "low", "medium", "high"];
+      if (order.indexOf(r) > order.indexOf(risk)) risk = r;
+    };
+    const tokenLabel = contract?.token ? "the token contract" : "the target contract";
+
+    if (decoded?.kind === "native-transfer") {
+      actions.push({
+        kind: "native-transfer",
+        description: `Sends ${tx?.value ?? "a"} wei of the native testnet token.`,
+      });
+      reasons.push({
+        text: "Plain value transfer with no contract call and no approval.",
+        evidence: withNote(["tool:decodeCalldata"], "native"),
+      });
+      raise("low");
+    }
+    if (decoded?.kind === "call" && decoded.functionName === "transfer") {
+      actions.push({ kind: "token-transfer", description: `Transfers ${decoded.standard} tokens from the sender.` });
+      reasons.push({
+        text: "A direct token transfer grants no ongoing spending rights.",
+        evidence: ["tool:decodeCalldata"],
+      });
+      raise("low");
+    }
+    if (decoded?.kind === "call" && decoded.functionName === "approve") {
+      const unlimited = decoded.flags?.includes("unlimited-approval");
+      actions.push({
+        kind: "approval",
+        description: `Approves a spender to move ${unlimited ? "an unlimited amount" : "a limited amount"} of ${tokenLabel}'s tokens.`,
+      });
+      if (unlimited) {
+        reasons.push({
+          text: "Unlimited allowance: the spender can take the full balance now and any tokens received later.",
+          evidence: withNote(["tool:decodeCalldata"], "unlimited"),
+        });
+        raise("high");
+      } else {
+        reasons.push({
+          text: "Limited allowance to a spender.",
+          evidence: withNote(["tool:decodeCalldata"], "approval"),
+        });
+        raise("medium");
+      }
+    }
+    if (decoded?.flags?.includes("operator-approval-all")) {
+      actions.push({ kind: "operator-approval", description: "Lets an operator move every NFT in the collection." });
+      reasons.push({
+        text: "Collection-wide operator approval.",
+        evidence: withNote(["tool:decodeCalldata"], "operator"),
+      });
+      raise("high");
+    }
+    if (decoded?.flags?.includes("offchain-signature-approval")) {
+      actions.push({ kind: "signature-approval", description: "Grants an allowance by signature (permit)." });
+      reasons.push({
+        text: "Permit-style approval that can be submitted later by anyone holding it.",
+        evidence: withNote(["tool:decodeCalldata"], "permit"),
+      });
+      raise("high");
+    }
+    if (decoded?.kind === "unknown") {
+      actions.push({
+        kind: "unknown",
+        description: `Calls an unrecognised function (${(decoded as { selector?: string }).selector}).`,
+      });
+      reasons.push({
+        text: "The function selector is not in the known ABI set, so its effect cannot be verified.",
+        evidence: withNote(["tool:decodeCalldata"], "decoding"),
+      });
+      raise("medium");
+    }
+    if (suspicious(contract)) {
+      reasons.push({
+        text: "Token metadata contains instruction-like text aimed at reviewers; it was treated as data and is a warning sign.",
+        evidence: withNote(["tool:lookupContract"], "prompt-injection"),
+      });
+      raise("high");
+    }
+    if (approvals?.approvals?.some((a) => a.unlimited)) {
+      reasons.push({
+        text: "The owner already has at least one unlimited allowance outstanding.",
+        evidence: withNote(["tool:getTokenApprovals"], "revoke", "unlimited"),
+      });
+      if (input.kind === "address") raise("medium");
+    }
+    if (input.kind === "address" && contract) {
+      actions.push({
+        kind: "contract-call",
+        description: contract.isContract ? "Address is a contract." : "Address is an externally owned account.",
+      });
+      if (risk === "unknown") {
+        reasons.push({
+          text: "No risky approvals or flags were found for this address.",
+          evidence: ["tool:lookupContract"],
+        });
+        raise("low");
+      }
+    }
+
+    const citations = [
+      ...new Set(
+        reasons
+          .flatMap((r) => r.evidence)
+          .filter((e) => e.startsWith("note:"))
+          .map((e) => e.slice(5)),
+      ),
+    ];
+    if (risk === "unknown") {
+      return JSON.stringify({
+        summary: "I don't know: there was not enough evidence to explain this request.",
+        actions: [],
+        riskLevel: "unknown",
+        reasons: [],
+        citations: [],
+      });
+    }
+    const summary =
+      risk === "high"
+        ? `High risk: ${reasons[0].text}`
+        : risk === "medium"
+          ? `Medium risk: ${reasons[0].text}`
+          : `Low risk: ${reasons[0].text}`;
+    return JSON.stringify({ summary, actions, riskLevel: risk, reasons, citations });
   }
 }
 
@@ -126,6 +266,7 @@ const safeParse = (s: string) => {
     return null;
   }
 };
+type Wrapped = { untrusted_tool_output?: { ok?: boolean; data?: unknown } };
 /** Tool messages are wrapped as { untrusted_tool_output: { ok, data } }. */
 const unwrap = (v: unknown) =>
   (v as { untrusted_tool_output?: { data?: unknown } } | null)?.untrusted_tool_output?.data;

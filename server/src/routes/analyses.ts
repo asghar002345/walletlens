@@ -57,6 +57,7 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm
     try {
       const run = await runAgent(analysis._id, input, llm, { chain, retriever });
       analysis.trace = run;
+      analysis.verdict = run.verdict;
       analysis.notices = [...new Set([...analysis.notices, ...run.notices])];
       if (run.provider === "mock" && mode === "live") analysis.notices.push("AI step ran on the offline mock model.");
       analysis.status = "complete";

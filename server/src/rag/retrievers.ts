@@ -1,7 +1,16 @@
 import { Knowledge } from "../models/knowledge.js";
 import { QuotaExceededError } from "../services/quota.js";
 import { LocalHashEmbedder } from "./localEmbedder.js";
-import { cosine, noteText, type Embedder, type RetrievedNote, type RetrieveResult, type Retriever } from "./types.js";
+import {
+  applyBoost,
+  cosine,
+  noteText,
+  type Embedder,
+  type RetrievedNote,
+  type RetrieveResult,
+  type Retriever,
+  type SearchOptions,
+} from "./types.js";
 
 // Below this, hashed keyword overlap is mostly noise (e.g. a single hash collision).
 const MIN_SCORE = 0.12;
@@ -22,7 +31,8 @@ export class LocalRetriever implements Retriever {
   private embedder = new LocalHashEmbedder();
   private memo = new Map<string, number[]>();
 
-  async search(query: string, k: number, tags?: string[]): Promise<RetrieveResult> {
+  async search(query: string, k: number, opts: SearchOptions = {}): Promise<RetrieveResult> {
+    const { tags, boostTags } = opts;
     const docs = await Knowledge.find(tags?.length ? { tags: { $in: tags } } : {}).lean();
     const q = this.embedder.vector(query);
     const scored: RetrievedNote[] = docs
@@ -33,9 +43,10 @@ export class LocalRetriever implements Retriever {
         return toNote(d, cosine(q, v));
       })
       .filter((n) => n.score >= MIN_SCORE)
-      .sort((a, b) => b.score - a.score || a.noteId.localeCompare(b.noteId))
-      .slice(0, k);
-    return { notes: scored, backend: "local" };
+      .sort((a, b) => b.score - a.score || a.noteId.localeCompare(b.noteId));
+    // Boost is applied after the relevance cut-off, so a tag alone can't pull in an unrelated note.
+    const ranked = applyBoost(scored, boostTags).slice(0, k);
+    return { notes: ranked, backend: "local" };
   }
 }
 
@@ -46,7 +57,8 @@ export class AtlasRetriever implements Retriever {
     private index = "knowledge_vector_index",
   ) {}
 
-  async search(query: string, k: number, tags?: string[]): Promise<RetrieveResult> {
+  async search(query: string, k: number, opts: SearchOptions = {}): Promise<RetrieveResult> {
+    const { tags, boostTags } = opts;
     const [queryVector] = await this.embedder.embed([query], "query");
     const docs = await Knowledge.aggregate<{
       noteId: string;
@@ -62,7 +74,7 @@ export class AtlasRetriever implements Retriever {
           path: "embedding",
           queryVector,
           numCandidates: Math.max(50, k * 10),
-          limit: k,
+          limit: boostTags?.length ? k * 2 : k,
           ...(tags?.length ? { filter: { tags: { $in: tags } } } : {}),
         },
       },
@@ -70,7 +82,13 @@ export class AtlasRetriever implements Retriever {
         $project: { _id: 0, noteId: 1, title: 1, body: 1, sources: 1, tags: 1, score: { $meta: "vectorSearchScore" } },
       },
     ]);
-    return { notes: docs.map((d) => toNote(d, d.score)), backend: "atlas" };
+    return {
+      notes: applyBoost(
+        docs.map((d) => toNote(d, d.score)),
+        boostTags,
+      ).slice(0, k),
+      backend: "atlas",
+    };
   }
 }
 
@@ -81,14 +99,14 @@ export class FallbackRetriever implements Retriever {
     private fallback: Retriever,
   ) {}
 
-  async search(query: string, k: number, tags?: string[]): Promise<RetrieveResult> {
+  async search(query: string, k: number, opts?: SearchOptions): Promise<RetrieveResult> {
     try {
-      return await this.primary.search(query, k, tags);
+      return await this.primary.search(query, k, opts);
     } catch (err) {
       const why =
         err instanceof QuotaExceededError ? `embedding ${err.window} cap reached` : "vector search unavailable";
       return {
-        ...(await this.fallback.search(query, k, tags)),
+        ...(await this.fallback.search(query, k, opts)),
         notice: `Retrieval: ${why}; used offline keyword search.`,
       };
     }

@@ -21,9 +21,28 @@ export interface RetrieveResult {
   notice?: string;
 }
 
+export interface SearchOptions {
+  /** Hard filter: only notes with one of these tags. */
+  tags?: string[];
+  /** Soft boost: notes with any of these tags get +BOOST added to their score. */
+  boostTags?: string[];
+}
+
+export const BOOST = 0.25;
+
+/** Re-rank by adding a fixed boost for tag matches (used by both backends, so behaviour is the same). */
+export function applyBoost<T extends { tags: string[]; score: number }>(notes: T[], boostTags?: string[]): T[] {
+  if (!boostTags?.length) return notes;
+  return notes
+    .map((n) =>
+      n.tags.some((t) => boostTags.includes(t)) ? { ...n, score: Math.round((n.score + BOOST) * 1000) / 1000 } : n,
+    )
+    .sort((a, b) => b.score - a.score);
+}
+
 /** Retrieval backends (offline keyword-vector or Atlas Vector Search) share this interface. */
 export interface Retriever {
-  search(query: string, k: number, tags?: string[]): Promise<RetrieveResult>;
+  search(query: string, k: number, opts?: SearchOptions): Promise<RetrieveResult>;
 }
 
 export const noteText = (n: { title: string; body: string; tags?: string[] }) =>

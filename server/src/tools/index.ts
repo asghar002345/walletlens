@@ -38,7 +38,7 @@ export interface ToolSpec<S extends z.ZodTypeAny = z.ZodTypeAny> {
 }
 
 const define = <S extends z.ZodTypeAny>(t: ToolSpec<S>) => t;
-const props = (p: Record<string, { type: string; description: string }>, required: string[]) => ({
+const props = (p: Record<string, { type: string; description: string; items?: unknown }>, required: string[]) => ({
   type: "object",
   properties: p,
   required,
@@ -159,17 +159,23 @@ export const TOOLS = [
         query: z.string().trim().min(3).max(300),
         k: z.number().int().min(1).max(5).default(3),
         tags: z.array(z.string().max(40)).max(5).optional(),
+        boostTags: z.array(z.string().max(40)).max(6).optional(),
       })
       .strict(),
     parameters: props(
       {
         query: { type: "string", description: "what to look up, e.g. 'unlimited ERC-20 approval'" },
         k: { type: "integer", description: "number of notes, 1-5 (default 3)" },
+        boostTags: {
+          type: "array",
+          items: { type: "string" },
+          description: "optional tags to boost, e.g. unlimited, operator, permit, native, decoding, prompt-injection",
+        },
       },
       ["query"],
     ),
-    async run({ query, k, tags }, { retriever }) {
-      const r = await retriever.search(query, k, tags);
+    async run({ query, k, tags, boostTags }, { retriever }) {
+      const r = await retriever.search(query, k, { tags, boostTags });
       return { data: { backend: r.backend, notes: r.notes }, notice: r.notice };
     },
   }),
