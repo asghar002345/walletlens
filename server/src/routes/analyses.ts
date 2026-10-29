@@ -37,7 +37,10 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm
         if (r.notice) notices.push(r.notice);
       }
     }
-    if (mode === "mock") notices.push("Mock mode: chain data comes from offline fixtures, not a live RPC.");
+    if (mode === "mock")
+      notices.push(
+        "Mock mode: chain data comes from offline sample fixtures and the AI steps use a deterministic offline mock model.",
+      );
 
     const analysis = await Analysis.create({
       userId: req.userId,
