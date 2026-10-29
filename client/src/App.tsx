@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { AnalysisDetail } from "./pages/AnalysisDetail";
 import { Landing } from "./pages/Landing";
+import { MetricsPage } from "./pages/Metrics";
 
 export function App() {
   return (
@@ -28,6 +29,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <AnalysisDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/metrics"
+          element={
+            <ProtectedRoute>
+              <MetricsPage />
             </ProtectedRoute>
           }
         />

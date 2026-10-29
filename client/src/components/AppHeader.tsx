@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth";
 import { WalletButton } from "../wallet/WalletButton";
 import { walletConnectProjectId } from "../wallet/config";
@@ -15,6 +15,12 @@ export function AppHeader({ wcEnabled = !!walletConnectProjectId }: { wcEnabled?
         <WalletButton walletConnectEnabled={wcEnabled} />
         {user && (
           <>
+            <NavLink to="/app" end className="navlink hide-sm">
+              Analyses
+            </NavLink>
+            <NavLink to="/metrics" className="navlink">
+              Metrics
+            </NavLink>
             <span className="muted small hide-sm">{user.email}</span>
             <button type="button" className="ghost" onClick={logout}>
               Log out

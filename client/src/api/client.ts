@@ -53,6 +53,7 @@ export interface Trace {
   citations?: string[];
   provider: string;
   steps: TraceStep[];
+  fallbacks?: { from: string; to: string; reason: string; at: string }[];
   totals: { inputTokens: number; outputTokens: number; latencyMs: number; toolCalls: number };
 }
 
@@ -113,3 +114,22 @@ export const analysesApi = {
   toolCalls: (id: string) => api<{ toolCalls: ToolCallLog[] }>(`/analyses/${id}/toolcalls`),
   health: () => api<{ ok: boolean; mockMode: boolean }>("/health"),
 };
+
+export interface LatencyStats {
+  count: number;
+  p50: number | null;
+  p95: number | null;
+}
+
+export interface Metrics {
+  mode: "mock" | "live";
+  analyses: number;
+  runLatencyMs: LatencyStats;
+  providers: { provider: string; steps: number; latencyMs: LatencyStats; inputTokens: number; outputTokens: number }[];
+  fallbacks: { runsWithFallback: number; byPath: { path: string; count: number }[] };
+  verdictStatus: Record<string, number>;
+  tools: { tool: string; calls: number; errors: number; cached: number; latencyMs: LatencyStats }[];
+  quota: { provider: string; usedToday: number; perDay: number; perMinute: number }[];
+}
+
+export const metricsApi = { get: () => api<Metrics>("/metrics") };
