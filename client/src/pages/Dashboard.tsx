@@ -55,6 +55,9 @@ export function Dashboard() {
                   <code>{short(a.input.value ?? a.input.request?.to)}</code>
                   <span className="muted small">{CHAIN_NAME[a.chainId]}</span>
                   <span className={`pill ${a.mode}`}>{a.mode}</span>
+                  {a.verdict && (
+                    <span className={`badge small-badge risk-${a.verdict.riskLevel}`}>{a.verdict.riskLevel}</span>
+                  )}
                   <span className="pill">{a.trace ? `${a.trace.totals.toolCalls} tool calls` : a.status}</span>
                 </li>
               ))}

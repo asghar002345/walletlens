@@ -4,6 +4,16 @@ export interface User {
   email: string;
 }
 
+export type RiskLevel = "low" | "medium" | "high" | "unknown";
+
+export interface Verdict {
+  summary: string;
+  actions: { kind: string; description: string }[];
+  riskLevel: RiskLevel;
+  reasons: { text: string; evidence: string[] }[];
+  citations: string[];
+}
+
 export interface Analysis {
   id: string;
   chainId: number;
@@ -13,6 +23,7 @@ export interface Analysis {
   mode: "mock" | "live";
   notices: string[];
   trace: Trace | null;
+  verdict: Verdict | null;
   createdAt: string;
 }
 
@@ -37,6 +48,8 @@ export interface RetrievedRef {
 export interface Trace {
   draft: string;
   retrieved?: RetrievedRef[];
+  verdictStatus?: "valid" | "repaired" | "fallback";
+  verdictErrors?: string[];
   citations?: string[];
   provider: string;
   steps: TraceStep[];

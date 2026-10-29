@@ -13,7 +13,15 @@ const analysis = {
   mode: "mock",
   notices: ["Mock mode: chain data comes from offline fixtures, not a live RPC."],
   createdAt: "",
+  verdict: {
+    summary: "High risk: unlimited allowance.",
+    actions: [{ kind: "approval", description: "Approves an unlimited amount." }],
+    riskLevel: "high",
+    reasons: [{ text: "Unlimited allowance.", evidence: ["tool:lookupContract", "note:std-erc20-unlimited"] }],
+    citations: ["std-erc20-unlimited"],
+  },
   trace: {
+    verdictStatus: "valid",
     draft: "Draft (mock): Calls ERC-20 approve. Background: [std-erc20-unlimited] [made-up-id].",
     retrieved: [
       {
@@ -84,7 +92,7 @@ const toolCalls = [
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AnalysisDetail", () => {
-  it("shows the draft, trace and tool-call log with flags", async () => {
+  it("shows the verdict, trace, notes and tool-call log with flags", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -99,10 +107,10 @@ describe("AnalysisDetail", () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/Calls ERC-20 approve/)).toBeInTheDocument();
+    expect(await screen.findByTestId("risk-badge")).toHaveTextContent("High risk");
     // Retrieved notes, with only the cited one marked and linked from the draft.
     expect(screen.getByRole("heading", { name: "Retrieved notes" })).toBeInTheDocument();
-    expect(screen.getByText("Unlimited (max uint256) allowances")).toBeInTheDocument();
+    expect(screen.getAllByText("Unlimited (max uint256) allowances")).toHaveLength(2); // citation + notes list
     expect(screen.getAllByText("cited")).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "std-erc20-unlimited" })[0]).toHaveAttribute(
       "href",

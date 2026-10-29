@@ -1,25 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, analysesApi, type Analysis, type ToolCallLog } from "../api/client";
-
-/** Render the draft with [noteId] citations as links to the retrieved-notes list. Unretrieved ids stay plain text. */
-function DraftText({ text, cited }: { text: string; cited: Set<string> }) {
-  const parts = text.split(/(\[[a-z0-9-]+\])/g);
-  return (
-    <p className="draft">
-      {parts.map((p, i) => {
-        const id = p.match(/^\[([a-z0-9-]+)\]$/)?.[1];
-        return id && cited.has(id) ? (
-          <a key={i} href={`#note-${id}`} className="cite">
-            {id}
-          </a>
-        ) : (
-          <span key={i}>{p}</span>
-        );
-      })}
-    </p>
-  );
-}
+import { VerdictCard } from "../components/VerdictCard";
 
 const CHAIN_NAME: Record<number, string> = { 11155111: "Sepolia", 80002: "Polygon Amoy" };
 
@@ -33,10 +15,10 @@ function suspiciousTexts(v: unknown, out: string[] = []): string[] {
   return out;
 }
 
-function ToolCallRow({ call, index }: { call: ToolCallLog; index: number }) {
+function ToolCallRow({ call, index, anchor }: { call: ToolCallLog; index: number; anchor: boolean }) {
   const flagged = suspiciousTexts(call.result);
   return (
-    <li className={`toolcall ${call.ok ? "" : "failed"}`}>
+    <li className={`toolcall ${call.ok ? "" : "failed"}`} id={anchor ? `tool-${call.tool}` : undefined}>
       <details>
         <summary>
           <span className="idx">{index + 1}</span>
@@ -112,6 +94,9 @@ export function AnalysisDetail() {
         </div>
       )}
       <main className="content">
+        {analysis.verdict && (
+          <VerdictCard verdict={analysis.verdict} status={t?.verdictStatus} retrieved={t?.retrieved} />
+        )}
         <section className="card">
           <div className="row between">
             <h2>Analysis</h2>
@@ -124,20 +109,6 @@ export function AnalysisDetail() {
           <code className="target">{target}</code>
           {t && (
             <>
-              <DraftText text={t.draft} cited={new Set(t.citations ?? [])} />
-              {(t.citations?.length ?? 0) > 0 && (
-                <div className="row small">
-                  <span className="muted">Citations:</span>
-                  {t.citations!.map((c) => (
-                    <a key={c} href={`#note-${c}`} className="pill cite-pill">
-                      {c}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <p className="muted small">
-                Draft explanation only. The structured risk verdict arrives in a later milestone.
-              </p>
               <div className="stats">
                 <div>
                   <b>{t.totals.toolCalls}</b>
@@ -229,7 +200,12 @@ export function AnalysisDetail() {
           ) : (
             <ul className="toolcalls">
               {calls.map((c, i) => (
-                <ToolCallRow key={c.id} call={c} index={i} />
+                <ToolCallRow
+                  key={c.id}
+                  call={c}
+                  index={i}
+                  anchor={calls.findIndex((x) => x.tool === c.tool && x.ok) === i}
+                />
               ))}
             </ul>
           )}
