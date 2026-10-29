@@ -1,0 +1,47 @@
+# Render Blueprint for the WalletLens API (free plan). Config only: not deployed.
+# Secrets use sync: false, so Render asks for them in the dashboard; nothing secret is stored here.
+services:
+  - type: web
+    name: walletlens-api
+    runtime: node
+    plan: free
+    # npm workspaces: install from the repo root lockfile, build and start only the server.
+    buildCommand: npm ci --include=dev && npm run build -w server
+    startCommand: npm start -w server
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: MONGOMS_DISABLE_POSTINSTALL
+        value: "1" # skip the test-only in-memory MongoDB download
+      - key: MOCK_MODE
+        value: "true" # set to "false" once the keys below are added
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false # e.g. the Vercel URL of the client
+      - key: TRUST_PROXY_HOPS
+        value: "2" # Vercel rewrite → Render proxy → API
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false
+      - key: GEMINI_EMBED_MODEL
+        sync: false
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: AMOY_RPC_URL
+        sync: false
+      - key: ATLAS_VECTOR_SEARCH
+        value: "false"
+      - key: ATLAS_VECTOR_INDEX
+        value: knowledge_vector_index
