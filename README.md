@@ -3,9 +3,9 @@
 An on-chain transaction explainer with a risk check **before you sign**. Paste a testnet tx hash, an
 address, or an unsigned signing request, and WalletLens explains what it does and how risky it looks.
 
-> **Status: work in progress (milestone 2 of 8: read-only tool loop).**
-> The API, data model, wallet input and the tool loop are built. RAG, structured verdicts, evals and the full
-> provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
+> **Status: work in progress (milestone 3 of 8: RAG).**
+> The API, data model, wallet input, the tool loop and retrieval over curated notes are built. Structured verdicts,
+> evals and the full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
 > No results or metrics are claimed here until the eval harness exists.
 
 **Safety by design:** WalletLens is read-only. It never holds a private key and never signs or sends a
@@ -44,6 +44,11 @@ flowchart LR
   AG --> TR[runTool: Zod args → tool → log]
   TR --> CR
   TR --> DB
+  TR --> RT{Retriever}
+  RT -- default --> LR[Local keyword vectors]
+  RT -- live --> AV[Atlas $vectorSearch + Gemini embeddings]
+  LR --> KN[(knowledge)]
+  AV --> KN
 ```
 
 ## Tool loop
@@ -62,6 +67,51 @@ wrapped as `{ "untrusted_tool_output": ... }`. The loop ends when the model answ
 | `lookupContract`    | is it a contract, plus token name / symbol / decimals (untrusted)                                             | RPC     |
 
 There is no tool that signs, sends or holds keys.
+
+## RAG: curated notes
+
+`server/knowledge/notes.json` holds 52 short notes written for this project, each with an id, title, tags and links
+to public specs or docs (EIPs, ethereum.org, OpenZeppelin, Solidity docs, Uniswap Permit2, revoke.cash). They cover
+approval phishing, unlimited approvals, permit / Permit2 phishing, `setApprovalForAll` drainers, address poisoning,
+fake airdrops, honeypots and rug pulls, upgradeable proxies, prompt injection in token metadata, and ERC-20 / 721 /
+1155 / 2612 / 4337 / EIP-712 / EIP-7702 basics. On start-up the API upserts them into the `knowledge` collection.
+
+Retrieval sits behind a `Retriever` interface:
+
+| Backend             | When                                                                | How                                                                     |
+| ------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `LocalRetriever`    | default (mock mode, or any live setup without Atlas)                | deterministic hashed unigram + bigram vectors, cosine similarity        |
+| `AtlasRetriever`    | `MOCK_MODE=false`, `GEMINI_API_KEY` set, `ATLAS_VECTOR_SEARCH=true` | Gemini `gemini-embedding-001` (768 dims) + `$vectorSearch`              |
+| `FallbackRetriever` | wraps Atlas                                                         | on an embedding cap or Atlas error, uses local search and adds a notice |
+
+The local backend is keyword similarity, not semantic search. It is free, instant and reproducible, which is what
+tests and CI need.
+
+Embeddings are cached in Mongo by model, task and text hash (30 days) and counted against
+`GEMINI_EMBED_PER_MINUTE` / `GEMINI_EMBED_PER_DAY`; only cache misses use quota. Re-seeding embeds only notes whose
+content changed.
+
+The answer cites notes as `[noteId]`. The trace stores every retrieved note and, separately, the citations: retrieved
+ids that the answer actually mentions. An id the model invents is dropped. The UI links citations to the notes and
+their sources.
+
+### Live retrieval setup (Atlas M0, free)
+
+1. Create a free M0 cluster and set `MONGODB_URI` in `server/.env`.
+2. In Atlas, create a Vector Search index on the `knowledge` collection with
+   [`server/knowledge/atlas-vector-index.json`](server/knowledge/atlas-vector-index.json):
+
+   ```json
+   {
+     "fields": [
+       { "type": "vector", "path": "embedding", "numDimensions": 768, "similarity": "cosine" },
+       { "type": "filter", "path": "tags" }
+     ]
+   }
+   ```
+
+3. Set `MOCK_MODE=false`, `GEMINI_API_KEY` and `ATLAS_VECTOR_SEARCH=true`, then run
+   `npm run seed:knowledge -w server` once to embed the notes (52 texts, about 3 batched requests).
 
 ### Prompt-injection guard
 
@@ -134,7 +184,7 @@ All `/api/analyses` routes need the session cookie. Errors are always `{ error: 
 - **Per-provider caps:** `RPC_*`, `GROQ_*`, `GEMINI_*`, `GEMINI_EMBED_*` per-minute and per-day caps
   (conservative defaults in `.env.example`), counted in Mongo so they survive restarts. A rejected call
   does not consume quota.
-- **Caching:** tx lookups are cached in Mongo (`TX_CACHE_TTL_SEC`, default 24h). Embeddings will use the same cache.
+- **Caching:** tx lookups are cached in Mongo (`TX_CACHE_TTL_SEC`, default 24h); embeddings for 30 days.
 - **Degradation:** when a cap is hit, WalletLens falls back (chain: live RPC → fixtures; LLM: live provider →
   mock model today, Groq → Gemini → mock in milestone 7) and records a notice that the UI shows.
 
@@ -152,12 +202,19 @@ login, field errors, form validation and the trace / tool-call log view.
 The tool loop is tested with the mock provider and with a scripted provider (bad args, endless tool calls, quota
 errors). Groq and Gemini adapters are tested with a fake `fetch`, so no key or network is needed.
 
+RAG tests check that the note set is valid and covers every required topic, that known queries retrieve the expected
+note, that unrelated queries return nothing, the embedding cache and cap, change-only re-embedding, and both fallbacks
+(cap hit, and `$vectorSearch` unavailable on a non-Atlas MongoDB).
+
 ## Design decisions
 
 - **Readers behind an interface.** `ChainReader` has a viem implementation and a fixture implementation,
   so tests and evals are deterministic and offline. LLM providers follow the same pattern (`LlmProvider`).
 - **Mock model as a planner, not canned text.** The mock reads the input and earlier tool results and picks the next
   tool, so the real loop, validation and logging run end to end with no keys.
+- **Citations are checked, not trusted.** Only ids that `retrieveNotes` actually returned count as citations.
+- **Same collection for both backends.** Local and Atlas retrieval read the same `knowledge` documents, so switching
+  modes changes ranking quality, not content.
 - **Log in the runner, not in each tool.** One place guarantees every call, including rejected ones, is audited.
 - **Validation at the edge with Zod.** One schema per input, a discriminated union on `kind`, and a single
   error handler that turns Zod errors into `{ field, message }` lists the UI can show next to inputs.
@@ -170,7 +227,7 @@ errors). Groq and Gemini adapters are tested with a fake `fetch`, so no key or n
 
 1. ✅ API, schema, wallet input (paste; WalletConnect/MetaMask SDK capture comes with the UI milestone)
 2. ✅ Tool loop: `getTx`, `decodeCalldata`, `getTokenApprovals`, `lookupContract` with Zod args, logged to `toolcalls`
-3. RAG: ~50 original notes, Gemini embeddings, Atlas Vector Search
+3. ✅ RAG: ~50 original notes, Gemini embeddings, Atlas Vector Search, offline fallback
 4. Structured verdict `{ summary, actions[], riskLevel, reasons[], citations[] }` with explicit "don't know"
 5. UI: verdict view, wallet connectors
 6. Evals in CI (retrieval and verdict scored separately, incl. prompt injection in token names)
