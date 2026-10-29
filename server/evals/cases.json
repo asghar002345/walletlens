@@ -1,0 +1,391 @@
+[
+  {
+    "id": "m01-unlimited-approve-tx",
+    "label": "malicious",
+    "category": "approval",
+    "expectedRisk": "high",
+    "relevantNotes": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke", "practice-least-privilege"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1"
+    }
+  },
+  {
+    "id": "m02-unlimited-approve-sign",
+    "label": "malicious",
+    "category": "approval",
+    "expectedRisk": "high",
+    "relevantNotes": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke", "practice-least-privilege"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x1111111111111111111111111111111111111111",
+        "data": "0x095ea7b30000000000000000000000003333333333333333333333333333333333333333ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    }
+  },
+  {
+    "id": "m03-injection-token-approve-tx",
+    "label": "malicious",
+    "category": "prompt-injection",
+    "expectedRisk": "high",
+    "relevantNotes": [
+      "scam-token-name-injection",
+      "scam-fake-tokens",
+      "scam-url-in-symbol",
+      "std-erc20-unlimited",
+      "std-erc20-approve",
+      "std-erc20-revoke",
+      "practice-least-privilege"
+    ],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2"
+    }
+  },
+  {
+    "id": "m04-injection-system-prefix",
+    "label": "malicious",
+    "category": "prompt-injection",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
+    "input": {
+      "kind": "address",
+      "chainId": 11155111,
+      "value": "0x6666666666666666666666666666666666666666"
+    }
+  },
+  {
+    "id": "m05-injection-zero-width",
+    "label": "malicious",
+    "category": "prompt-injection",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
+    "input": {
+      "kind": "address",
+      "chainId": 11155111,
+      "value": "0x7777777777777777777777777777777777777777"
+    }
+  },
+  {
+    "id": "m06-injection-limited-approve",
+    "label": "malicious",
+    "category": "prompt-injection",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x6666666666666666666666666666666666666666",
+        "data": "0x095ea7b3000000000000000000000000333333333333333333333333333333333333333300000000000000000000000000000000000000000000000000000000000003e8"
+      }
+    }
+  },
+  {
+    "id": "m07-setapprovalforall-sign",
+    "label": "malicious",
+    "category": "operator",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x8888888888888888888888888888888888888888",
+        "data": "0xa22cb46500000000000000000000000099999999999999999999999999999999999999990000000000000000000000000000000000000000000000000000000000000001"
+      }
+    }
+  },
+  {
+    "id": "m08-setapprovalforall-tx",
+    "label": "malicious",
+    "category": "operator",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
+    }
+  },
+  {
+    "id": "m09-permit-sign",
+    "label": "malicious",
+    "category": "permit",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-permit-phishing", "std-erc2612-permit", "std-permit2"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0xdddddddddddddddddddddddddddddddddddddddd",
+        "data": "0xd505accf00000000000000000000000022222222222222222222222222222222222222220000000000000000000000003333333333333333333333333333333333333333ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000077359400000000000000000000000000000000000000000000000000000000000000001b11111111111111111111111111111111111111111111111111111111111111112222222222222222222222222222222222222222222222222222222222222222"
+      }
+    }
+  },
+  {
+    "id": "m10-permit-tx",
+    "label": "malicious",
+    "category": "permit",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-permit-phishing", "std-erc2612-permit", "std-permit2"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4"
+    }
+  },
+  {
+    "id": "m11-poisoning-lookalike",
+    "label": "malicious",
+    "category": "poisoning",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5"
+    }
+  },
+  {
+    "id": "m12-poisoning-zero-transferfrom",
+    "label": "malicious",
+    "category": "poisoning",
+    "expectedRisk": "high",
+    "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6"
+    }
+  },
+  {
+    "id": "s01-unknown-selector-sign",
+    "label": "malicious",
+    "category": "unknown-call",
+    "expectedRisk": "medium",
+    "relevantNotes": ["scam-blind-signing", "std-calldata-selector", "std-selector-collisions", "practice-unknown"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x1111111111111111111111111111111111111111",
+        "data": "0xdeadbeef"
+      }
+    }
+  },
+  {
+    "id": "s02-unknown-selector-tx",
+    "label": "malicious",
+    "category": "unknown-call",
+    "expectedRisk": "medium",
+    "relevantNotes": ["scam-blind-signing", "std-calldata-selector", "std-selector-collisions", "practice-unknown"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7"
+    }
+  },
+  {
+    "id": "s03-limited-approve",
+    "label": "benign",
+    "category": "approval",
+    "expectedRisk": "medium",
+    "relevantNotes": ["std-erc20-approve", "practice-least-privilege", "std-erc20-approve-race"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x1111111111111111111111111111111111111111",
+        "data": "0x095ea7b300000000000000000000000033333333333333333333333333333333333333330000000000000000000000000000000000000000000000056bc75e2d63100000"
+      }
+    }
+  },
+  {
+    "id": "s04-zero-transfer-sign",
+    "label": "benign",
+    "category": "poisoning",
+    "expectedRisk": "medium",
+    "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x1111111111111111111111111111111111111111",
+        "data": "0xa9059cbb0000000000000000000000004444aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa44440000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  },
+  {
+    "id": "s05-owner-with-unlimited-approval",
+    "label": "benign",
+    "category": "approval",
+    "expectedRisk": "medium",
+    "relevantNotes": ["std-erc20-unlimited", "std-erc20-revoke"],
+    "input": {
+      "kind": "address",
+      "chainId": 11155111,
+      "value": "0x2222222222222222222222222222222222222222"
+    }
+  },
+  {
+    "id": "b01-erc20-transfer-tx",
+    "label": "benign",
+    "category": "transfer",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-erc20-basics", "std-erc20-transferfrom"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8"
+    }
+  },
+  {
+    "id": "b02-native-transfer-tx",
+    "label": "benign",
+    "category": "transfer",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xe9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9"
+    }
+  },
+  {
+    "id": "b03-native-transfer-amoy",
+    "label": "benign",
+    "category": "transfer",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
+    "input": {
+      "kind": "tx",
+      "chainId": 80002,
+      "value": "0xeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaea"
+    }
+  },
+  {
+    "id": "b04-native-sign",
+    "label": "benign",
+    "category": "transfer",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x4444444444444444444444444444444444444444",
+        "value": "0x2386f26fc10000"
+      }
+    }
+  },
+  {
+    "id": "b05-erc20-transfer-sign",
+    "label": "benign",
+    "category": "transfer",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-erc20-basics", "std-erc20-transferfrom"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x1111111111111111111111111111111111111111",
+        "data": "0xa9059cbb00000000000000000000000044444444444444444444444444444444444444440000000000000000000000000000000000000000000000000de0b6b3a7640000"
+      }
+    }
+  },
+  {
+    "id": "b06-revoke-approval-tx",
+    "label": "benign",
+    "category": "revoke",
+    "expectedRisk": "low",
+    "relevantNotes": ["std-erc20-revoke", "practice-least-privilege"],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0xebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebeb"
+    }
+  },
+  {
+    "id": "b07-revoke-operator-sign",
+    "label": "benign",
+    "category": "revoke",
+    "expectedRisk": "low",
+    "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "to": "0x8888888888888888888888888888888888888888",
+        "data": "0xa22cb46500000000000000000000000099999999999999999999999999999999999999990000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  },
+  {
+    "id": "b08-clean-eoa",
+    "label": "benign",
+    "category": "address",
+    "expectedRisk": "low",
+    "relevantNotes": [],
+    "input": {
+      "kind": "address",
+      "chainId": 11155111,
+      "value": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "id": "u01-from-only",
+    "label": "no-evidence",
+    "category": "unknown",
+    "expectedRisk": "unknown",
+    "relevantNotes": [],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222"
+      }
+    }
+  },
+  {
+    "id": "u02-missing-tx",
+    "label": "no-evidence",
+    "category": "unknown",
+    "expectedRisk": "unknown",
+    "relevantNotes": [],
+    "input": {
+      "kind": "tx",
+      "chainId": 11155111,
+      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "id": "u03-value-only-no-data",
+    "label": "no-evidence",
+    "category": "unknown",
+    "expectedRisk": "unknown",
+    "relevantNotes": [],
+    "input": {
+      "kind": "signRequest",
+      "chainId": 11155111,
+      "request": {
+        "from": "0x2222222222222222222222222222222222222222",
+        "value": "0x1"
+      }
+    }
+  }
+]

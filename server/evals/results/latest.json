@@ -1,0 +1,891 @@
+{
+  "mode": "mock",
+  "note": "Mock mode: deterministic mock model, offline keyword retrieval and fixture chain data. Not a measure of a real LLM.",
+  "cases": 28,
+  "retrieval": {
+    "cases": 24,
+    "recallAt3": 0.799,
+    "mrr": 0.958
+  },
+  "verdict": {
+    "cases": 28,
+    "riskAccuracy": 1,
+    "maliciousFlaggedRecall": 1,
+    "benignFalseHighRate": 0,
+    "unknownRecall": 1,
+    "unknownPrecision": 1,
+    "citationValidity": 1,
+    "firstTryValidRate": 1,
+    "confusion": {
+      "low": {
+        "low": 8,
+        "medium": 0,
+        "high": 0,
+        "unknown": 0
+      },
+      "medium": {
+        "low": 0,
+        "medium": 5,
+        "high": 0,
+        "unknown": 0
+      },
+      "high": {
+        "low": 0,
+        "medium": 0,
+        "high": 12,
+        "unknown": 0
+      },
+      "unknown": {
+        "low": 0,
+        "medium": 0,
+        "high": 0,
+        "unknown": 3
+      }
+    }
+  },
+  "fallbackDrill": {
+    "pass": true,
+    "providers": [
+      "groq",
+      "gemini",
+      "mock"
+    ],
+    "fallbacks": [
+      {
+        "from": "groq",
+        "to": "gemini",
+        "reason": "HTTP 503"
+      },
+      {
+        "from": "gemini",
+        "to": "mock",
+        "reason": "minute cap reached"
+      }
+    ],
+    "notices": [
+      "groq HTTP 503; switched to gemini.",
+      "gemini minute cap reached; switched to mock (offline mock model)."
+    ]
+  },
+  "gate": {
+    "pass": true,
+    "checks": [
+      {
+        "metric": "verdict.riskAccuracy",
+        "op": ">=",
+        "threshold": 0.9,
+        "value": 1,
+        "pass": true
+      },
+      {
+        "metric": "verdict.maliciousFlaggedRecall",
+        "op": ">=",
+        "threshold": 0.95,
+        "value": 1,
+        "pass": true
+      },
+      {
+        "metric": "verdict.benignFalseHighRate",
+        "op": "<=",
+        "threshold": 0.05,
+        "value": 0,
+        "pass": true
+      },
+      {
+        "metric": "verdict.unknownRecall",
+        "op": ">=",
+        "threshold": 1,
+        "value": 1,
+        "pass": true
+      },
+      {
+        "metric": "verdict.unknownPrecision",
+        "op": ">=",
+        "threshold": 1,
+        "value": 1,
+        "pass": true
+      },
+      {
+        "metric": "verdict.citationValidity",
+        "op": ">=",
+        "threshold": 1,
+        "value": 1,
+        "pass": true
+      },
+      {
+        "metric": "retrieval.recallAt3",
+        "op": ">=",
+        "threshold": 0.6,
+        "value": 0.799,
+        "pass": true
+      },
+      {
+        "metric": "retrieval.mrr",
+        "op": ">=",
+        "threshold": 0.6,
+        "value": 0.958,
+        "pass": true
+      },
+      {
+        "metric": "fallbackDrill",
+        "op": "==",
+        "threshold": 1,
+        "value": 1,
+        "pass": true
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "m01-unlimited-approve-tx",
+      "label": "malicious",
+      "category": "approval",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Unlimited allowance: the spender can take the full balance now and any tokens received later.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke"
+      ],
+      "provider": "mock",
+      "latencyMs": 1,
+      "tokens": 4358,
+      "toolCalls": 5
+    },
+    {
+      "id": "m02-unlimited-approve-sign",
+      "label": "malicious",
+      "category": "approval",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Unlimited allowance: the spender can take the full balance now and any tokens received later.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3620,
+      "toolCalls": 4
+    },
+    {
+      "id": "m03-injection-token-approve-tx",
+      "label": "malicious",
+      "category": "prompt-injection",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Unlimited allowance: the spender can take the full balance now and any tokens received later.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol",
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "std-erc20-unlimited",
+        "std-erc20-basics"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 4286,
+      "toolCalls": 5
+    },
+    {
+      "id": "m04-injection-system-prefix",
+      "label": "malicious",
+      "category": "prompt-injection",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Token metadata contains instruction-like text aimed at reviewers; it was treated as data and is a warning sign.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "scam-url-in-symbol",
+        "scam-fake-tokens"
+      ],
+      "provider": "mock",
+      "latencyMs": 1,
+      "tokens": 2409,
+      "toolCalls": 3
+    },
+    {
+      "id": "m05-injection-zero-width",
+      "label": "malicious",
+      "category": "prompt-injection",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Token metadata contains instruction-like text aimed at reviewers; it was treated as data and is a warning sign.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "scam-url-in-symbol",
+        "scam-fake-tokens"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2400,
+      "toolCalls": 3
+    },
+    {
+      "id": "m06-injection-limited-approve",
+      "label": "malicious",
+      "category": "prompt-injection",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Limited allowance to a spender.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "std-erc20-basics",
+        "std-erc20-approve"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3419,
+      "toolCalls": 4
+    },
+    {
+      "id": "m07-setapprovalforall-sign",
+      "label": "malicious",
+      "category": "operator",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Collection-wide operator approval.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "retrieved": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2573,
+      "toolCalls": 3
+    },
+    {
+      "id": "m08-setapprovalforall-tx",
+      "label": "malicious",
+      "category": "operator",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Collection-wide operator approval.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "retrieved": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3248,
+      "toolCalls": 4
+    },
+    {
+      "id": "m09-permit-sign",
+      "label": "malicious",
+      "category": "permit",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Permit-style approval that can be submitted later by anyone holding it.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-permit2"
+      ],
+      "retrieved": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-eip7702"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3290,
+      "toolCalls": 3
+    },
+    {
+      "id": "m10-permit-tx",
+      "label": "malicious",
+      "category": "permit",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Permit-style approval that can be submitted later by anyone holding it.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-permit2"
+      ],
+      "retrieved": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-eip7702"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3965,
+      "toolCalls": 4
+    },
+    {
+      "id": "m11-poisoning-lookalike",
+      "label": "malicious",
+      "category": "poisoning",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Zero-value transferFrom sent by a third party on the owner's behalf: a classic address-poisoning pattern.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-erc20-approve-race"
+      ],
+      "provider": "mock",
+      "latencyMs": 1,
+      "tokens": 3511,
+      "toolCalls": 4
+    },
+    {
+      "id": "m12-poisoning-zero-transferfrom",
+      "label": "malicious",
+      "category": "poisoning",
+      "expectedRisk": "high",
+      "predictedRisk": "high",
+      "summary": "High risk: Zero-value transferFrom sent by a third party on the owner's behalf: a classic address-poisoning pattern.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-erc20-approve-race"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3511,
+      "toolCalls": 4
+    },
+    {
+      "id": "s01-unknown-selector-sign",
+      "label": "malicious",
+      "category": "unknown-call",
+      "expectedRisk": "medium",
+      "predictedRisk": "medium",
+      "summary": "Medium risk: The function selector is not in the known ABI set, so its effect cannot be verified.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-blind-signing",
+        "std-calldata-selector",
+        "std-selector-collisions",
+        "practice-unknown"
+      ],
+      "retrieved": [
+        "std-selector-collisions",
+        "std-calldata-selector",
+        "scam-blind-signing"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2454,
+      "toolCalls": 3
+    },
+    {
+      "id": "s02-unknown-selector-tx",
+      "label": "malicious",
+      "category": "unknown-call",
+      "expectedRisk": "medium",
+      "predictedRisk": "medium",
+      "summary": "Medium risk: The function selector is not in the known ABI set, so its effect cannot be verified.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-blind-signing",
+        "std-calldata-selector",
+        "std-selector-collisions",
+        "practice-unknown"
+      ],
+      "retrieved": [
+        "std-selector-collisions",
+        "std-calldata-selector",
+        "scam-blind-signing"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3199,
+      "toolCalls": 4
+    },
+    {
+      "id": "s03-limited-approve",
+      "label": "benign",
+      "category": "approval",
+      "expectedRisk": "medium",
+      "predictedRisk": "medium",
+      "summary": "Medium risk: Limited allowance to a spender.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-approve",
+        "practice-least-privilege",
+        "std-erc20-approve-race"
+      ],
+      "retrieved": [
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "std-erc20-unlimited"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3508,
+      "toolCalls": 4
+    },
+    {
+      "id": "s04-zero-transfer-sign",
+      "label": "benign",
+      "category": "poisoning",
+      "expectedRisk": "medium",
+      "predictedRisk": "medium",
+      "summary": "Medium risk: A zero-value token transfer moves nothing; it is commonly used to plant lookalike addresses in history (address poisoning).",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-value-to-contract"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2688,
+      "toolCalls": 3
+    },
+    {
+      "id": "s05-owner-with-unlimited-approval",
+      "label": "benign",
+      "category": "approval",
+      "expectedRisk": "medium",
+      "predictedRisk": "medium",
+      "summary": "Medium risk: The owner already has at least one unlimited allowance outstanding.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-revoke"
+      ],
+      "retrieved": [
+        "std-erc20-revoke",
+        "practice-least-privilege",
+        "scam-malicious-upgrade"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2369,
+      "toolCalls": 3
+    },
+    {
+      "id": "b01-erc20-transfer-tx",
+      "label": "benign",
+      "category": "transfer",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: A direct token transfer grants no ongoing spending rights.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-basics",
+        "std-erc20-transferfrom"
+      ],
+      "retrieved": [
+        "std-erc20-basics",
+        "std-erc721-basics",
+        "std-erc1155-basics"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 3305,
+      "toolCalls": 4
+    },
+    {
+      "id": "b02-native-transfer-tx",
+      "label": "benign",
+      "category": "transfer",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: Plain value transfer with no contract call and no approval.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2967,
+      "toolCalls": 4
+    },
+    {
+      "id": "b03-native-transfer-amoy",
+      "label": "benign",
+      "category": "transfer",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: Plain value transfer with no contract call and no approval.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2958,
+      "toolCalls": 4
+    },
+    {
+      "id": "b04-native-sign",
+      "label": "benign",
+      "category": "transfer",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: Plain value transfer with no contract call and no approval.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2290,
+      "toolCalls": 3
+    },
+    {
+      "id": "b05-erc20-transfer-sign",
+      "label": "benign",
+      "category": "transfer",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: A direct token transfer grants no ongoing spending rights.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-basics",
+        "std-erc20-transferfrom"
+      ],
+      "retrieved": [
+        "std-erc20-basics",
+        "std-erc721-basics",
+        "std-erc1155-basics"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 2629,
+      "toolCalls": 3
+    },
+    {
+      "id": "b06-revoke-approval-tx",
+      "label": "benign",
+      "category": "revoke",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: Sets the allowance to zero, which revokes the spender's access.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-revoke",
+        "std-erc20-approve",
+        "practice-least-privilege"
+      ],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 4229,
+      "toolCalls": 5
+    },
+    {
+      "id": "b07-revoke-operator-sign",
+      "label": "benign",
+      "category": "revoke",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: Revoking an operator approval reduces risk.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "retrieved": [],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 1671,
+      "toolCalls": 2
+    },
+    {
+      "id": "b08-clean-eoa",
+      "label": "benign",
+      "category": "address",
+      "expectedRisk": "low",
+      "predictedRisk": "low",
+      "summary": "Low risk: No risky approvals or flags were found for this address.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [],
+      "retrieved": [],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 1385,
+      "toolCalls": 2
+    },
+    {
+      "id": "u01-from-only",
+      "label": "no-evidence",
+      "category": "unknown",
+      "expectedRisk": "unknown",
+      "predictedRisk": "unknown",
+      "summary": "I don't know: there was not enough evidence to explain this request.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [],
+      "retrieved": [],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 427,
+      "toolCalls": 0
+    },
+    {
+      "id": "u02-missing-tx",
+      "label": "no-evidence",
+      "category": "unknown",
+      "expectedRisk": "unknown",
+      "predictedRisk": "unknown",
+      "summary": "I don't know: there was not enough evidence to explain this request.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [],
+      "retrieved": [],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 869,
+      "toolCalls": 1
+    },
+    {
+      "id": "u03-value-only-no-data",
+      "label": "no-evidence",
+      "category": "unknown",
+      "expectedRisk": "unknown",
+      "predictedRisk": "unknown",
+      "summary": "I don't know: there was not enough evidence to explain this request.",
+      "verdictStatus": "valid",
+      "citationsValid": true,
+      "relevantNotes": [],
+      "retrieved": [],
+      "provider": "mock",
+      "latencyMs": 0,
+      "tokens": 431,
+      "toolCalls": 0
+    }
+  ],
+  "retrievalPerCase": [
+    {
+      "id": "m01-unlimited-approve-tx",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m02-unlimited-approve-sign",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m03-injection-token-approve-tx",
+      "recall": 0.6666666666666666,
+      "rr": 1
+    },
+    {
+      "id": "m04-injection-system-prefix",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m05-injection-zero-width",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m06-injection-limited-approve",
+      "recall": 0.3333333333333333,
+      "rr": 1
+    },
+    {
+      "id": "m07-setapprovalforall-sign",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m08-setapprovalforall-tx",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m09-permit-sign",
+      "recall": 0.6666666666666666,
+      "rr": 1
+    },
+    {
+      "id": "m10-permit-tx",
+      "recall": 0.6666666666666666,
+      "rr": 1
+    },
+    {
+      "id": "m11-poisoning-lookalike",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "m12-poisoning-zero-transferfrom",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "s01-unknown-selector-sign",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "s02-unknown-selector-tx",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "s03-limited-approve",
+      "recall": 0.3333333333333333,
+      "rr": 1
+    },
+    {
+      "id": "s04-zero-transfer-sign",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "s05-owner-with-unlimited-approval",
+      "recall": 0.5,
+      "rr": 1
+    },
+    {
+      "id": "b01-erc20-transfer-tx",
+      "recall": 0.5,
+      "rr": 1
+    },
+    {
+      "id": "b02-native-transfer-tx",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "b03-native-transfer-amoy",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "b04-native-sign",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "b05-erc20-transfer-sign",
+      "recall": 0.5,
+      "rr": 1
+    },
+    {
+      "id": "b06-revoke-approval-tx",
+      "recall": 1,
+      "rr": 1
+    },
+    {
+      "id": "b07-revoke-operator-sign",
+      "recall": 0,
+      "rr": 0
+    }
+  ]
+}

@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "eval": "npm run eval -w server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

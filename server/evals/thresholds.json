@@ -1,0 +1,10 @@
+{
+  "verdict.riskAccuracy": 0.9,
+  "verdict.maliciousFlaggedRecall": 0.95,
+  "verdict.benignFalseHighRate.max": 0.05,
+  "verdict.unknownRecall": 1,
+  "verdict.unknownPrecision": 1,
+  "verdict.citationValidity": 1,
+  "retrieval.recallAt3": 0.6,
+  "retrieval.mrr": 0.6
+}

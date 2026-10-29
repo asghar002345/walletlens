@@ -6,10 +6,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.evals.json",
     "test": "vitest run",
     "dev:memory": "tsx src/devMemory.ts",
-    "seed:knowledge": "tsx src/seedKnowledge.ts"
+    "seed:knowledge": "tsx src/seedKnowledge.ts",
+    "eval": "tsx evals/run.ts",
+    "eval:fixtures": "tsx evals/build-fixtures.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
