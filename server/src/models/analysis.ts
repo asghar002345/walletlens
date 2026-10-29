@@ -9,7 +9,7 @@ const analysisSchema = new Schema(
     input: {
       kind: { type: String, enum: INPUT_KINDS, required: true },
       value: { type: String }, // tx hash or address
-      request: { type: Schema.Types.Mixed }, // unsigned eth_sendTransaction params (never signed)
+      request: { type: Schema.Types.Mixed }, // unsigned transaction request params (never signed)
     },
     chainData: { type: Schema.Types.Mixed, default: null },
     status: { type: String, enum: ["pending", "complete", "failed"], default: "pending" },

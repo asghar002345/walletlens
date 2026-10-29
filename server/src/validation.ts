@@ -29,7 +29,7 @@ const txHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash
 const hexData = z.string().refine((v) => isHex(v), "Must be 0x-prefixed hex");
 const quantity = z.union([hexData, z.string().regex(/^\d+$/)]).optional();
 
-/** Unsigned eth_sendTransaction params captured from a wallet request. WalletLens never signs. */
+/** Unsigned transaction request params captured from a wallet request. WalletLens never signs. */
 export const signRequestSchema = z.object({
   from: address,
   to: address.optional(),
