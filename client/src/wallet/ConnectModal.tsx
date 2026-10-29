@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useConnect, useConnectors } from "wagmi";
 
 /**
@@ -33,7 +34,8 @@ export function ConnectModal({
   if (!open) return null;
   const pendingId = isPending ? (variables?.connector as { id?: string } | undefined)?.id : undefined;
 
-  return (
+  // Portal to <body>: the sticky, blurred header would otherwise become the containing block for the overlay.
+  return createPortal(
     <div className="overlay" onClick={onClose}>
       <div
         ref={dialogRef}
@@ -94,6 +96,7 @@ export function ConnectModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

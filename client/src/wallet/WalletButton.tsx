@@ -7,6 +7,7 @@ const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 export function WalletButton({ walletConnectEnabled }: { walletConnectEnabled: boolean }) {
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState(false);
   const { address, chainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { mutate: switchChain } = useSwitchChain();
@@ -31,12 +32,33 @@ export function WalletButton({ walletConnectEnabled }: { walletConnectEnabled: b
           Unsupported network · switch to Sepolia
         </button>
       )}
-      <code className="addr" title={address}>
-        {short(address)}
-      </code>
-      <button type="button" className="ghost small" onClick={() => disconnect()}>
-        Disconnect
-      </button>
+      <div className="menu-wrap">
+        <button
+          type="button"
+          className="addr"
+          title={address}
+          aria-haspopup="menu"
+          aria-expanded={menu}
+          onClick={() => setMenu((m) => !m)}
+        >
+          <span className="dot" aria-hidden="true" />
+          {short(address)}
+        </button>
+        {menu && (
+          <div role="menu" className="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                disconnect();
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

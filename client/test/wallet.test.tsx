@@ -86,3 +86,15 @@ describe("simulate signing request", () => {
     expect((screen.getByLabelText("Calldata") as HTMLTextAreaElement).value).toMatch(/^0x095ea7b3/);
   });
 });
+
+describe("wallet menu", () => {
+  it("disconnects from the address menu", async () => {
+    stubApi();
+    renderWithProviders(<WalletButton walletConnectEnabled={false} />);
+    await userEvent.click(screen.getByRole("button", { name: "Connect wallet" }));
+    await userEvent.click(screen.getByRole("button", { name: /Mock Connector/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /0xd213/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Disconnect" }));
+    expect(await screen.findByRole("button", { name: "Connect wallet" })).toBeInTheDocument();
+  });
+});

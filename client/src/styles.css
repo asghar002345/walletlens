@@ -1005,3 +1005,65 @@ pre {
     transform: none;
   }
 }
+.topbar nav {
+  flex-wrap: nowrap;
+}
+.menu-wrap {
+  position: relative;
+}
+button.addr {
+  color: var(--text);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  gap: 0.4rem;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 6px var(--accent-2);
+}
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: var(--card);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: 0.3rem;
+  min-width: 150px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+.menu button {
+  width: 100%;
+  justify-content: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--text);
+}
+.menu button:hover {
+  background: #1a2547;
+}
+html,
+body {
+  overflow-x: hidden;
+}
+@media (max-width: 640px) {
+  .topbar .brand {
+    display: none;
+  }
+  .topbar nav {
+    gap: 0.4rem;
+  }
+  .topbar nav > button,
+  .topbar nav .button,
+  .topbar .secondary,
+  .topbar .ghost {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.85rem;
+  }
+  .landing .topbar .brand {
+    display: inline;
+  }
+}
