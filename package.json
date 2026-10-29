@@ -1,5 +1,5 @@
 {
-  "name": "taskboard-mern",
+  "name": "walletlens",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -12,13 +12,16 @@
     "test": "npm test -w server && npm test -w client",
     "lint": "eslint .",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
-    "seed": "npm run seed -w server"
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
+    "prettier": "^3.9.10",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1"
   }

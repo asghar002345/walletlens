@@ -1,2 +1,4 @@
 import { defineConfig } from "vitest/config";
-export default defineConfig({ test: { testTimeout: 60000, hookTimeout: 120000 } });
+export default defineConfig({
+  test: { setupFiles: ["test/setup.ts"], testTimeout: 60000, hookTimeout: 120000, fileParallelism: false },
+});
