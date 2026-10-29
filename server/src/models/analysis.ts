@@ -15,6 +15,8 @@ const analysisSchema = new Schema(
     status: { type: String, enum: ["pending", "complete", "failed"], default: "pending" },
     // Filled by the tool loop + structured verdict milestones.
     verdict: { type: Schema.Types.Mixed, default: null },
+    // Tool-loop trace: per-step provider, model, latency, tokens and tool calls, plus the draft answer.
+    trace: { type: Schema.Types.Mixed, default: null },
     mode: { type: String, enum: ["mock", "live"], required: true },
     notices: { type: [String], default: [] },
   },

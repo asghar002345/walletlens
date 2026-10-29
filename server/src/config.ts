@@ -13,6 +13,10 @@ export interface AppConfig {
   apiRateLimit: { windowMs: number; max: number };
   caps: { rpc: ProviderCaps; groq: ProviderCaps; gemini: ProviderCaps; geminiEmbed: ProviderCaps };
   txCacheTtlSec: number;
+  groqApiKey?: string;
+  groqModel?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
 }
 
 const int = (v: string | undefined, d: number) => {
@@ -42,5 +46,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       geminiEmbed: cap("GEMINI_EMBED", 30, 500),
     },
     txCacheTtlSec: int(env.TX_CACHE_TTL_SEC, 86_400),
+    groqApiKey: env.GROQ_API_KEY || undefined,
+    groqModel: env.GROQ_MODEL || undefined,
+    geminiApiKey: env.GEMINI_API_KEY || undefined,
+    geminiModel: env.GEMINI_MODEL || undefined,
   };
 }

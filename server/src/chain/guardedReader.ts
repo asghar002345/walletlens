@@ -53,4 +53,14 @@ export class GuardedChainReader {
     const minute = new Date().toISOString().slice(0, 16);
     return this.run(`addr:${chainId}:${address.toLowerCase()}:${minute}`, (r) => r.getAddress(chainId, address));
   }
+
+  getTokenMeta(chainId: SupportedChainId, address: Address) {
+    return this.run(`token:${chainId}:${address.toLowerCase()}`, (r) => r.getTokenMeta(chainId, address));
+  }
+
+  getApprovals(chainId: SupportedChainId, owner: Address, token?: Address) {
+    const minute = new Date().toISOString().slice(0, 16);
+    const key = `appr:${chainId}:${owner.toLowerCase()}:${token?.toLowerCase() ?? "*"}:${minute}`;
+    return this.run(key, (r) => r.getApprovals(chainId, owner, token));
+  }
 }

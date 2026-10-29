@@ -1,0 +1,101 @@
+import type { ChatMessage, ChatResult, LlmProvider, ToolCallRequest } from "./types.js";
+import { estimateTokens } from "./types.js";
+
+interface Input {
+  kind: "tx" | "address" | "signRequest";
+  chainId: number;
+  value?: string;
+  request?: { from: string; to?: string; data?: string };
+}
+
+/**
+ * Deterministic offline "model". It plans the same tool sequence a careful analyst would and then
+ * writes a short draft. It reads tool outputs only as data, so injected text cannot steer it.
+ */
+export class MockProvider implements LlmProvider {
+  readonly name = "mock" as const;
+
+  async chat(messages: ChatMessage[]): Promise<ChatResult> {
+    const user = messages.find((m) => m.role === "user");
+    const input = JSON.parse(
+      (user?.content ?? "").match(/<analysis_input>([\s\S]*)<\/analysis_input>/)?.[1] ?? "{}",
+    ) as Input;
+    const results = new Map<string, unknown>();
+    for (const m of messages) if (m.role === "tool") results.set(m.name, safeParse(m.content));
+    const called = new Set(results.keys());
+    const next = this.plan(input, results).find((c) => !called.has(c.name));
+
+    const prompt = messages.map((m) => ("content" in m ? (m.content ?? "") : "")).join("\n");
+    if (next) {
+      return { content: null, toolCalls: [next], usage: usage(prompt, JSON.stringify(next)), model: "mock-planner-v1" };
+    }
+    const content = this.draft(input, results);
+    return { content, toolCalls: [], usage: usage(prompt, content), model: "mock-planner-v1" };
+  }
+
+  private plan(input: Input, results: Map<string, unknown>): ToolCallRequest[] {
+    const { chainId } = input;
+    const calls: ToolCallRequest[] = [];
+    const add = (name: string, args: unknown) => calls.push({ id: `mock-${calls.length + 1}`, name, args });
+    let from: string | undefined;
+    let to: string | undefined;
+    let data: string | undefined;
+
+    if (input.kind === "tx") {
+      add("getTx", { chainId, hash: input.value });
+      const tx = unwrap(results.get("getTx")) as { from?: string; to?: string | null; input?: string } | undefined;
+      if (!tx) return calls;
+      ({ from, data } = { from: tx.from, data: tx.input });
+      to = tx.to ?? undefined;
+    } else if (input.kind === "signRequest") {
+      ({ from, to, data } = input.request ?? { from: "" });
+    } else {
+      add("lookupContract", { chainId, address: input.value });
+      add("getTokenApprovals", { chainId, owner: input.value });
+      return calls;
+    }
+    if (data) add("decodeCalldata", { data });
+    if (to) add("lookupContract", { chainId, address: to });
+    const decoded = unwrap(results.get("decodeCalldata")) as { functionName?: string } | undefined;
+    if (from && to && decoded?.functionName === "approve")
+      add("getTokenApprovals", { chainId, owner: from, token: to });
+    return calls;
+  }
+
+  private draft(input: Input, results: Map<string, unknown>): string {
+    const decoded = unwrap(results.get("decodeCalldata")) as
+      { kind?: string; functionName?: string; standard?: string; flags?: string[] } | undefined;
+    const contract = unwrap(results.get("lookupContract")) as
+      | {
+          isContract?: boolean;
+          token?: { symbol?: { text?: string; suspicious?: boolean }; name?: { suspicious?: boolean } } | null;
+        }
+      | undefined;
+    const parts: string[] = [];
+    if (input.kind === "address")
+      parts.push(contract?.isContract ? "The address is a contract." : "The address is not a contract.");
+    if (decoded?.kind === "native-transfer") parts.push("Plain native-token transfer with no contract call.");
+    if (decoded?.kind === "call") parts.push(`Calls ${decoded.standard} ${decoded.functionName}.`);
+    if (decoded?.kind === "unknown") parts.push("The function selector is not recognised, so its effect is unknown.");
+    if (decoded?.flags?.includes("unlimited-approval")) parts.push("It grants an unlimited allowance to the spender.");
+    if (contract?.token?.name?.suspicious || contract?.token?.symbol?.suspicious)
+      parts.push("The token metadata contains instruction-like text, which was ignored and is itself a warning sign.");
+    if (parts.length === 0) parts.push("Not enough evidence to explain this. I don't know.");
+    return `Draft (mock): ${parts.join(" ")}`;
+  }
+}
+
+const usage = (prompt: string, out: string) => ({
+  inputTokens: estimateTokens(prompt),
+  outputTokens: estimateTokens(out),
+});
+const safeParse = (s: string) => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+};
+/** Tool messages are wrapped as { untrusted_tool_output: { ok, data } }. */
+const unwrap = (v: unknown) =>
+  (v as { untrusted_tool_output?: { data?: unknown } } | null)?.untrusted_tool_output?.data;

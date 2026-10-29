@@ -2,12 +2,13 @@ import request from "supertest";
 import { createApp } from "../src/app.js";
 import { loadConfig, type AppConfig } from "../src/config.js";
 import type { ChainReader } from "../src/chain/types.js";
+import type { LlmProvider } from "../src/llm/types.js";
 
 export const testConfig = (o: Partial<AppConfig> = {}): AppConfig => ({
   ...loadConfig({ JWT_SECRET: "test-secret-at-least-16", API_RATE_MAX: "1000" }),
   ...o,
 });
-export const makeApp = (o: Partial<AppConfig> = {}, deps: { liveChain?: ChainReader | null } = {}) =>
+export const makeApp = (o: Partial<AppConfig> = {}, deps: { liveChain?: ChainReader | null; llm?: LlmProvider } = {}) =>
   createApp(testConfig(o), deps);
 
 let n = 0;

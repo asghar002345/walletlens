@@ -25,11 +25,27 @@ describe("analyses (mock mode, default)", () => {
     const agent = await loggedInAgent(app);
     const res = await agent.post("/api/analyses").send({ kind: "tx", chainId: SEPOLIA, value: APPROVE_TX });
     expect(res.status).toBe(201);
-    expect(res.body.analysis).toMatchObject({ mode: "mock", status: "pending", chainId: SEPOLIA });
+    expect(res.body.analysis).toMatchObject({ mode: "mock", status: "complete", chainId: SEPOLIA });
     expect(res.body.analysis.chainData.input).toMatch(/^0x095ea7b3/);
     expect(res.body.analysis.notices.join(" ")).toMatch(/Mock mode/);
     const list = await agent.get("/api/analyses");
     expect(list.body.analyses).toHaveLength(1);
+  });
+
+  it("runs the tool loop and exposes the logged tool calls", async () => {
+    const agent = await loggedInAgent(app);
+    const { body } = await agent.post("/api/analyses").send({ kind: "tx", chainId: SEPOLIA, value: APPROVE_TX });
+    expect(body.analysis.trace.provider).toBe("mock");
+    expect(body.analysis.trace.draft).toMatch(/unlimited allowance/);
+    const calls = await agent.get(`/api/analyses/${body.analysis.id}/toolcalls`);
+    expect(calls.body.toolCalls.map((t: { tool: string }) => t.tool)).toEqual([
+      "getTx",
+      "decodeCalldata",
+      "lookupContract",
+      "getTokenApprovals",
+    ]);
+    const other = await loggedInAgent(app);
+    expect((await other.get(`/api/analyses/${body.analysis.id}/toolcalls`)).status).toBe(404);
   });
 
   it("returns 404 for an unknown tx", async () => {
@@ -80,7 +96,12 @@ describe("analyses (live mode with caps and cache)", () => {
   };
 
   it("caches tx lookups in Mongo", async () => {
-    const live: ChainReader = { getTx: vi.fn(async () => fakeTx), getAddress: vi.fn() };
+    const live: ChainReader = {
+      getTx: vi.fn(async () => fakeTx),
+      getAddress: vi.fn(),
+      getTokenMeta: vi.fn(),
+      getApprovals: vi.fn(),
+    };
     const app = makeApp({ mockMode: false }, { liveChain: live });
     const agent = await loggedInAgent(app);
     await agent.post("/api/analyses").send({ kind: "tx", chainId: SEPOLIA, value: APPROVE_TX });
@@ -90,7 +111,12 @@ describe("analyses (live mode with caps and cache)", () => {
   });
 
   it("degrades to mocked data with a notice when the RPC cap is hit", async () => {
-    const live: ChainReader = { getTx: vi.fn(async () => fakeTx), getAddress: vi.fn() };
+    const live: ChainReader = {
+      getTx: vi.fn(async () => fakeTx),
+      getAddress: vi.fn(),
+      getTokenMeta: vi.fn(),
+      getApprovals: vi.fn(),
+    };
     const app = makeApp(
       { mockMode: false, caps: { ...makeCaps(), rpc: { perMinute: 0, perDay: 0 } } },
       { liveChain: live },

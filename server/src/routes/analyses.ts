@@ -1,6 +1,9 @@
 import { Router } from "express";
 import type { Address, Hex } from "viem";
 import { Analysis } from "../models/analysis.js";
+import { ToolCall } from "../models/toolCall.js";
+import { runAgent } from "../llm/agent.js";
+import type { LlmProvider } from "../llm/types.js";
 import { createAnalysisSchema } from "../validation.js";
 import { HttpError } from "../middleware/errors.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -8,7 +11,7 @@ import type { GuardedChainReader } from "../chain/guardedReader.js";
 import type { SupportedChainId } from "../chain/networks.js";
 import type { AppConfig } from "../config.js";
 
-export function analysesRouter(config: AppConfig, chain: GuardedChainReader) {
+export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm: LlmProvider) {
   const router = Router();
   router.use(requireAuth(config.jwtSecret));
 
@@ -45,6 +48,19 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader) {
       notices,
       status: "pending",
     });
+
+    // Run the read-only tool loop. Failures are recorded on the analysis instead of failing the request.
+    try {
+      const run = await runAgent(analysis._id, input, llm, { chain });
+      analysis.trace = run;
+      analysis.notices = [...new Set([...analysis.notices, ...run.notices])];
+      if (run.provider === "mock" && mode === "live") analysis.notices.push("AI step ran on the offline mock model.");
+      analysis.status = "complete";
+    } catch (err) {
+      analysis.status = "failed";
+      analysis.notices.push(`Analysis failed: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+    await analysis.save();
     res.status(201).json({ analysis });
   });
 
@@ -57,6 +73,15 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader) {
     const analysis = await Analysis.findOne({ _id: req.params.id, userId: req.userId });
     if (!analysis) throw new HttpError(404, "Analysis not found");
     res.json({ analysis });
+  });
+
+  router.get("/:id/toolcalls", async (req, res) => {
+    const analysis = await Analysis.exists({ _id: req.params.id, userId: req.userId });
+    if (!analysis) throw new HttpError(404, "Analysis not found");
+    const toolCalls = await ToolCall.find({ analysisId: req.params.id }).sort({ createdAt: 1, _id: 1 }).lean();
+    res.json({
+      toolCalls: toolCalls.map(({ _id, __v: _v, ...t }) => ({ id: String(_id), ...t })),
+    });
   });
 
   return router;
