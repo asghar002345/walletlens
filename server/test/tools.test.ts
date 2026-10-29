@@ -80,3 +80,18 @@ describe("runTool", () => {
     expect(await ToolCall.countDocuments({ analysisId, ok: false })).toBe(4);
   });
 });
+
+describe("decode flags for revokes and poisoning", () => {
+  const pad = (h: string) => h.replace(/^0x/, "").padStart(64, "0");
+  const addr = "0x3333333333333333333333333333333333333333";
+  it("flags approve(0) as a revoke", () => {
+    expect(decode(`0x095ea7b3${pad(addr)}${pad("0")}`).flags).toContain("revoke-approval");
+  });
+  it("flags setApprovalForAll(false) as a revoke", () => {
+    expect(decode(`0xa22cb465${pad(addr)}${pad("0")}`).flags).toContain("revoke-operator");
+  });
+  it("flags zero-value transfers (address poisoning)", () => {
+    expect(decode(`0xa9059cbb${pad(addr)}${pad("0")}`).flags).toContain("zero-value-transfer");
+    expect(decode(`0xa9059cbb${pad(addr)}${pad("5")}`).flags ?? []).not.toContain("zero-value-transfer");
+  });
+});

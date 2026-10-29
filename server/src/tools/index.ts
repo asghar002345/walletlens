@@ -63,6 +63,10 @@ export function decode(data: Hex) {
       if (functionName === "approve" && args?.[1] === MAX_UINT256) flags.push("unlimited-approval");
       if (functionName === "setApprovalForAll" && args?.[1] === true) flags.push("operator-approval-all");
       if (functionName === "permit") flags.push("offchain-signature-approval");
+      if (functionName === "approve" && args?.[1] === 0n) flags.push("revoke-approval");
+      if (functionName === "setApprovalForAll" && args?.[1] === false) flags.push("revoke-operator");
+      const amount = functionName === "transfer" ? args?.[1] : functionName === "transferFrom" ? args?.[2] : undefined;
+      if (amount === 0n) flags.push("zero-value-transfer");
       return { kind: "call" as const, standard, selector, functionName, args: stringifyBigints(args ?? []), flags };
     } catch {
       // try the next ABI

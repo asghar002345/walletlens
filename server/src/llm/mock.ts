@@ -5,7 +5,7 @@ interface Input {
   kind: "tx" | "address" | "signRequest";
   chainId: number;
   value?: string;
-  request?: { from: string; to?: string; data?: string };
+  request?: { from: string; to?: string; data?: string; value?: string };
 }
 
 /**
@@ -49,6 +49,8 @@ export class MockProvider implements LlmProvider {
       to = tx.to ?? undefined;
     } else if (input.kind === "signRequest") {
       ({ from, to, data } = input.request ?? { from: "" });
+      // A value-only request to a recipient is a plain native transfer; decode "0x" to say so.
+      if (!data && to && input.request?.value) data = "0x";
     } else {
       add("lookupContract", { chainId, address: input.value });
       add("getTokenApprovals", { chainId, owner: input.value });
@@ -76,7 +78,10 @@ export class MockProvider implements LlmProvider {
     else if (decoded?.functionName === "approve") terms.push("ERC-20 approve allowance spender");
     if (decoded?.flags?.includes("operator-approval-all")) terms.push("setApprovalForAll operator drainer");
     if (decoded?.flags?.includes("offchain-signature-approval")) terms.push("permit signature phishing");
-    if (decoded?.functionName === "transfer") terms.push("ERC-20 transfer");
+    if (decoded?.flags?.includes("zero-value-transfer")) terms.push("zero-value transfer address poisoning lookalike");
+    else if (decoded?.functionName === "transfer") terms.push("ERC-20 transfer");
+    if (decoded?.functionName === "transferFrom") terms.push("transferFrom allowance");
+    if (decoded?.flags?.includes("revoke-approval")) terms.push("revoke approval");
     if (decoded?.kind === "native-transfer") terms.push("plain native transfer address poisoning");
     if (decoded?.kind === "unknown") terms.push("unknown function selector blind signing");
     if (suspicious(contract)) terms.push("token name instructions prompt injection metadata");
@@ -87,6 +92,8 @@ export class MockProvider implements LlmProvider {
       ...(decoded?.flags?.includes("operator-approval-all") ? ["operator"] : []),
       ...(decoded?.flags?.includes("offchain-signature-approval") ? ["permit"] : []),
       ...(decoded?.kind === "native-transfer" ? ["native"] : []),
+      ...(decoded?.flags?.includes("zero-value-transfer") ? ["poisoning"] : []),
+      ...(decoded?.flags?.includes("revoke-approval") ? ["revoke"] : []),
       ...(decoded?.kind === "unknown" ? ["decoding"] : []),
       ...(suspicious(contract) ? ["prompt-injection"] : []),
     ];
@@ -108,7 +115,7 @@ export class MockProvider implements LlmProvider {
       ? (unwrap(results.get("getTokenApprovals")) as { approvals?: { unlimited: boolean }[] } | undefined)
       : undefined;
     const tx = ok("getTx")
-      ? (unwrap(results.get("getTx")) as { found?: boolean; value?: string } | undefined)
+      ? (unwrap(results.get("getTx")) as { found?: boolean; value?: string; from?: string } | undefined)
       : undefined;
     const notes = ok("retrieveNotes")
       ? ((unwrap(results.get("retrieveNotes")) as { notes?: { noteId: string; tags: string[] }[] } | undefined)
@@ -132,7 +139,7 @@ export class MockProvider implements LlmProvider {
     if (decoded?.kind === "native-transfer") {
       actions.push({
         kind: "native-transfer",
-        description: `Sends ${tx?.value ?? "a"} wei of the native testnet token.`,
+        description: `Sends ${tx?.value ?? input.request?.value ?? "a"} wei of the native testnet token.`,
       });
       reasons.push({
         text: "Plain value transfer with no contract call and no approval.",
@@ -140,11 +147,58 @@ export class MockProvider implements LlmProvider {
       });
       raise("low");
     }
+    const zero = decoded?.flags?.includes("zero-value-transfer");
     if (decoded?.kind === "call" && decoded.functionName === "transfer") {
-      actions.push({ kind: "token-transfer", description: `Transfers ${decoded.standard} tokens from the sender.` });
+      actions.push({
+        kind: "token-transfer",
+        description: `Transfers ${zero ? "zero" : ""} ${decoded.standard} tokens from the sender.`.replace("  ", " "),
+      });
+      if (zero) {
+        reasons.push({
+          text: "A zero-value token transfer moves nothing; it is commonly used to plant lookalike addresses in history (address poisoning).",
+          evidence: withNote(["tool:decodeCalldata"], "poisoning"),
+        });
+        raise("medium");
+      } else {
+        reasons.push({
+          text: "A direct token transfer grants no ongoing spending rights.",
+          evidence: ["tool:decodeCalldata"],
+        });
+        raise("low");
+      }
+    }
+    if (decoded?.kind === "call" && decoded.functionName === "transferFrom") {
+      const owner = String((decoded.args as unknown[] | undefined)?.[0] ?? "").toLowerCase();
+      const spoofed = !!tx?.from && owner !== "" && tx.from.toLowerCase() !== owner;
+      actions.push({
+        kind: "token-transfer",
+        description: `Moves ${decoded.standard} tokens out of ${owner || "an owner"} using transferFrom.`,
+      });
+      if (zero && spoofed) {
+        reasons.push({
+          text: "Zero-value transferFrom sent by a third party on the owner's behalf: a classic address-poisoning pattern.",
+          evidence: withNote(["tool:getTx", "tool:decodeCalldata"], "poisoning"),
+        });
+        raise("high");
+      } else if (zero) {
+        reasons.push({
+          text: "Zero-value transferFrom, often used for address poisoning.",
+          evidence: withNote(["tool:decodeCalldata"], "poisoning"),
+        });
+        raise("medium");
+      } else {
+        reasons.push({
+          text: "Moves tokens using an existing allowance.",
+          evidence: withNote(["tool:decodeCalldata"], "approval"),
+        });
+        raise("medium");
+      }
+    }
+    if (decoded?.flags?.includes("revoke-operator")) {
+      actions.push({ kind: "operator-approval", description: "Removes an operator's collection-wide approval." });
       reasons.push({
-        text: "A direct token transfer grants no ongoing spending rights.",
-        evidence: ["tool:decodeCalldata"],
+        text: "Revoking an operator approval reduces risk.",
+        evidence: withNote(["tool:decodeCalldata"], "operator"),
       });
       raise("low");
     }
@@ -152,9 +206,17 @@ export class MockProvider implements LlmProvider {
       const unlimited = decoded.flags?.includes("unlimited-approval");
       actions.push({
         kind: "approval",
-        description: `Approves a spender to move ${unlimited ? "an unlimited amount" : "a limited amount"} of ${tokenLabel}'s tokens.`,
+        description: decoded.flags?.includes("revoke-approval")
+          ? `Revokes a spender's allowance on ${tokenLabel}.`
+          : `Approves a spender to move ${unlimited ? "an unlimited amount" : "a limited amount"} of ${tokenLabel}'s tokens.`,
       });
-      if (unlimited) {
+      if (decoded.flags?.includes("revoke-approval")) {
+        reasons.push({
+          text: "Sets the allowance to zero, which revokes the spender's access.",
+          evidence: withNote(["tool:decodeCalldata"], "revoke"),
+        });
+        raise("low");
+      } else if (unlimited) {
         reasons.push({
           text: "Unlimited allowance: the spender can take the full balance now and any tokens received later.",
           evidence: withNote(["tool:decodeCalldata"], "unlimited"),
