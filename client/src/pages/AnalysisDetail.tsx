@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, analysesApi, type Analysis, type ToolCallLog } from "../api/client";
 import { VerdictCard } from "../components/VerdictCard";
+import { AppHeader } from "../components/AppHeader";
 
 const CHAIN_NAME: Record<number, string> = { 11155111: "Sepolia", 80002: "Polygon Amoy" };
 
@@ -69,23 +70,25 @@ export function AnalysisDetail() {
         <div role="alert" className="alert">
           {error}
         </div>
-        <Link to="/">← Back</Link>
+        <Link to="/app">← Back</Link>
       </main>
     );
-  if (!analysis) return <p className="muted center">Loading…</p>;
+  if (!analysis)
+    return (
+      <div className="shell">
+        <AppHeader />
+        <main id="main" className="content" aria-busy="true">
+          <div className="card skeleton tall" />
+          <div className="card skeleton" />
+        </main>
+      </div>
+    );
   const t = analysis.trace;
   const target = analysis.input.value ?? analysis.input.request?.to ?? "";
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <Link to="/" className="brand plain">
-          WalletLens
-        </Link>
-        <Link to="/" className="small">
-          ← All analyses
-        </Link>
-      </header>
+      <AppHeader />
       {analysis.notices.length > 0 && (
         <div className="notice" role="status">
           {analysis.notices.map((n) => (
@@ -93,7 +96,10 @@ export function AnalysisDetail() {
           ))}
         </div>
       )}
-      <main className="content">
+      <main id="main" className="content">
+        <Link to="/app" className="small back">
+          ← All analyses
+        </Link>
         {analysis.verdict && (
           <VerdictCard verdict={analysis.verdict} status={t?.verdictStatus} retrieved={t?.retrieved} />
         )}

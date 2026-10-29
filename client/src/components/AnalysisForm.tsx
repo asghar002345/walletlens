@@ -1,80 +1,45 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { ApiError, analysesApi, type Analysis } from "../api/client";
+import { CHAINS } from "../wallet/config";
+import { SimulateForm } from "./SimulateForm";
 
-const CHAINS = [
-  { id: 11155111, name: "Sepolia" },
-  { id: 80002, name: "Polygon Amoy" },
-];
-type Kind = "tx" | "address" | "signRequest";
-const KIND_LABEL: Record<Kind, string> = { tx: "Tx hash", address: "Address", signRequest: "Signing request" };
+type Kind = "signRequest" | "tx" | "address";
+const KIND_LABEL: Record<Kind, string> = {
+  signRequest: "Simulate signing request",
+  tx: "Transaction hash",
+  address: "Address",
+};
 
 export function AnalysisForm({ onCreated }: { onCreated: (a: Analysis) => void }) {
-  const [kind, setKind] = useState<Kind>("tx");
-  const [chainId, setChainId] = useState(CHAINS[0].id);
+  const [kind, setKind] = useState<Kind>("signRequest");
+  const [chainId, setChainId] = useState<number>(CHAINS[0].id);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const id = useId();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    let body: Record<string, unknown>;
-    if (kind === "signRequest") {
-      try {
-        body = { kind, chainId, request: JSON.parse(value) };
-      } catch {
-        setError("Signing request must be valid JSON (eth_sendTransaction params)");
-        return;
-      }
-    } else body = { kind, chainId, value: value.trim() };
     setBusy(true);
     try {
-      onCreated((await analysesApi.create(body)).analysis);
+      onCreated((await analysesApi.create({ kind, chainId, value: value.trim() })).analysis);
       setValue("");
     } catch (err) {
-      setError(err instanceof ApiError ? (err.details[0]?.message ?? err.message) : "Network error");
+      setError(
+        err instanceof ApiError ? (err.details[0]?.message ?? err.message) : "Network error, is the API running?",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form className="card" onSubmit={onSubmit} noValidate>
-      <h2>New analysis</h2>
-      <div className="tabs" role="tablist">
-        {(Object.keys(KIND_LABEL) as Kind[]).map((k) => (
-          <button
-            type="button"
-            role="tab"
-            key={k}
-            aria-selected={kind === k}
-            className={kind === k ? "tab active" : "tab"}
-            onClick={() => setKind(k)}
-          >
-            {KIND_LABEL[k]}
-          </button>
-        ))}
-      </div>
-      <div className="row">
-        <label className="field grow">
-          <span>{KIND_LABEL[kind]}</span>
-          {kind === "signRequest" ? (
-            <textarea
-              rows={4}
-              value={value}
-              placeholder='{"from":"0x…","to":"0x…","data":"0x095ea7b3…","value":"0x0"}'
-              onChange={(e) => setValue(e.target.value)}
-            />
-          ) : (
-            <input
-              value={value}
-              placeholder={kind === "tx" ? "0x… (66 chars)" : "0x… (42 chars)"}
-              onChange={(e) => setValue(e.target.value)}
-            />
-          )}
-        </label>
-        <label className="field">
-          <span>Network</span>
+    <section className="card" aria-labelledby={`${id}-h`}>
+      <div className="row between">
+        <h2 id={`${id}-h`}>New analysis</h2>
+        <label className="inline-field">
+          <span className="muted small">Network</span>
           <select value={chainId} onChange={(e) => setChainId(Number(e.target.value))}>
             {CHAINS.map((c) => (
               <option key={c.id} value={c.id}>
@@ -84,17 +49,61 @@ export function AnalysisForm({ onCreated }: { onCreated: (a: Analysis) => void }
           </select>
         </label>
       </div>
-      {error && (
-        <div role="alert" className="alert">
-          {error}
-        </div>
-      )}
-      <div className="row between">
-        <small className="muted">WalletLens never signs or sends anything.</small>
-        <button className="primary" disabled={busy || !value.trim()}>
-          {busy ? "Analysing…" : "Analyse"}
-        </button>
+      <div className="tabs" role="tablist" aria-label="Input type">
+        {(Object.keys(KIND_LABEL) as Kind[]).map((k) => (
+          <button
+            type="button"
+            role="tab"
+            id={`${id}-${k}`}
+            key={k}
+            aria-selected={kind === k}
+            aria-controls={`${id}-panel`}
+            className={kind === k ? "tab active" : "tab"}
+            onClick={() => {
+              setKind(k);
+              setError(null);
+            }}
+          >
+            {KIND_LABEL[k]}
+          </button>
+        ))}
       </div>
-    </form>
+      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${kind}`}>
+        {kind === "signRequest" ? (
+          <SimulateForm chainId={chainId} onCreated={onCreated} />
+        ) : (
+          <form onSubmit={onSubmit} noValidate className="stack">
+            <label className="field">
+              <span>{KIND_LABEL[kind]}</span>
+              <input
+                value={value}
+                spellCheck={false}
+                autoComplete="off"
+                placeholder={kind === "tx" ? "0x… (66 characters)" : "0x… (42 characters)"}
+                onChange={(e) => setValue(e.target.value)}
+                aria-invalid={!!error}
+              />
+            </label>
+            {error && (
+              <div role="alert" className="alert">
+                {error}
+              </div>
+            )}
+            <div className="row between">
+              <small className="muted">Read-only lookup on public testnet data.</small>
+              <button className="primary" disabled={busy || !value.trim()} aria-busy={busy}>
+                {busy ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" /> Analysing…
+                  </>
+                ) : (
+                  "Analyse"
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </section>
   );
 }

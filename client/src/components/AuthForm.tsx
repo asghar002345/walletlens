@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, type FieldError } from "../api/client";
 import { useAuth } from "../auth";
+import { Logo } from "./Logo";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const { login, register } = useAuth();
@@ -20,7 +21,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       if (isRegister) await register(form.name, form.email, form.password);
       else await login(form.email, form.password);
-      navigate("/");
+      navigate("/app");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -48,10 +49,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   );
 
   return (
-    <main className="auth">
-      <form className="card" onSubmit={onSubmit} noValidate>
-        <div className="brand">WalletLens</div>
-        <h1>{isRegister ? "Create your account" : "Sign in"}</h1>
+    <main className="auth" id="main">
+      <form className="card" onSubmit={onSubmit} noValidate aria-labelledby="auth-h">
+        <Link to="/" className="plain" aria-label="WalletLens home">
+          <Logo />
+        </Link>
+        <h1 id="auth-h">{isRegister ? "Create your account" : "Sign in"}</h1>
         <p className="muted">Explain a transaction and check its risk before you sign. Read-only, testnets only.</p>
         {error && (
           <div role="alert" className="alert">
@@ -61,7 +64,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {isRegister && field("name", "Name")}
         {field("email", "Email", "email")}
         {field("password", "Password", "password")}
-        <button className="primary" disabled={busy}>
+        <button className="primary" disabled={busy} aria-busy={busy}>
           {busy ? "Please wait…" : isRegister ? "Create account" : "Sign in"}
         </button>
         <p className="muted small">

@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "./utils";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnalysisDetail } from "../src/pages/AnalysisDetail";
 
@@ -100,12 +101,11 @@ describe("AnalysisDetail", () => {
           new Response(JSON.stringify(url.endsWith("/toolcalls") ? { toolCalls } : { analysis }), { status: 200 }),
       ),
     );
-    render(
-      <MemoryRouter initialEntries={["/analyses/a1"]}>
-        <Routes>
-          <Route path="/analyses/:id" element={<AnalysisDetail />} />
-        </Routes>
-      </MemoryRouter>,
+    renderWithProviders(
+      <Routes>
+        <Route path="/analyses/:id" element={<AnalysisDetail />} />
+      </Routes>,
+      "/analyses/a1",
     );
     expect(await screen.findByTestId("risk-badge")).toHaveTextContent("High risk");
     // Retrieved notes, with only the cited one marked and linked from the draft.

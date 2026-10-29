@@ -1,64 +1,67 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { analysesApi, type Analysis } from "../api/client";
-import { useAuth } from "../auth";
+import { ApiError, analysesApi, type Analysis } from "../api/client";
 import { AnalysisForm } from "../components/AnalysisForm";
+import { AppHeader } from "../components/AppHeader";
+import { MockBanner } from "../components/MockBanner";
+import { chainName } from "../wallet/config";
 
-const CHAIN_NAME: Record<number, string> = { 11155111: "Sepolia", 80002: "Polygon Amoy" };
 const short = (v = "") => (v.length > 18 ? `${v.slice(0, 10)}…${v.slice(-6)}` : v);
+const KIND = { tx: "Tx", address: "Address", signRequest: "Sign request" } as const;
 
 export function Dashboard() {
-  const { user, logout } = useAuth();
   const [analyses, setAnalyses] = useState<Analysis[] | null>(null);
-  const [mockMode, setMockMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    analysesApi.list().then((r) => setAnalyses(r.analyses));
-    analysesApi.health().then((h) => setMockMode(h.mockMode));
+    analysesApi
+      .list()
+      .then((r) => setAnalyses(r.analyses))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Couldn't load analyses. Is the API running?"));
   }, []);
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <div className="brand">WalletLens</div>
-        <div className="row">
-          <span className="muted small">{user?.email}</span>
-          <button className="ghost" onClick={logout}>
-            Log out
-          </button>
-        </div>
-      </header>
-      {mockMode && (
-        <div className="notice" role="status">
-          Mock mode: chain data comes from offline sample fixtures and the AI steps use a deterministic offline mock
-          model. No API keys are used.
-        </div>
-      )}
-      <main className="content">
+      <AppHeader />
+      <MockBanner />
+      <main id="main" className="content">
         <AnalysisForm onCreated={(a) => navigate(`/analyses/${a.id}`)} />
-        <section className="card">
-          <h2>Recent analyses</h2>
-          {analyses === null ? (
-            <p className="muted">Loading…</p>
+        <section className="card" aria-labelledby="recent-h" aria-busy={analyses === null && !error}>
+          <h2 id="recent-h">Recent analyses</h2>
+          {error ? (
+            <div role="alert" className="alert">
+              {error}
+            </div>
+          ) : analyses === null ? (
+            <ul className="list" aria-label="Loading">
+              {[0, 1, 2].map((i) => (
+                <li key={i} className="skeleton" />
+              ))}
+            </ul>
           ) : analyses.length === 0 ? (
             <div className="empty">
+              <div className="empty-icon" aria-hidden="true" />
               <p>No analyses yet.</p>
-              <p className="muted small">Paste a testnet tx hash, an address or an unsigned signing request above.</p>
+              <p className="muted small">Build a signing request above, or try one of the demo presets.</p>
             </div>
           ) : (
             <ul className="list">
               {analyses.map((a) => (
                 <li key={a.id}>
-                  <Link className="rowlink" to={`/analyses/${a.id}`} aria-label={`Open ${a.input.kind} analysis`} />
-                  <span className="pill">{a.input.kind}</span>
-                  <code>{short(a.input.value ?? a.input.request?.to)}</code>
-                  <span className="muted small">{CHAIN_NAME[a.chainId]}</span>
-                  <span className={`pill ${a.mode}`}>{a.mode}</span>
+                  <Link className="rowlink" to={`/analyses/${a.id}`}>
+                    <span className="sr-only">
+                      Open {KIND[a.input.kind]} analysis {a.verdict ? `, ${a.verdict.riskLevel} risk` : ""}
+                    </span>
+                  </Link>
                   {a.verdict && (
                     <span className={`badge small-badge risk-${a.verdict.riskLevel}`}>{a.verdict.riskLevel}</span>
                   )}
-                  <span className="pill">{a.trace ? `${a.trace.totals.toolCalls} tool calls` : a.status}</span>
+                  <span className="pill">{KIND[a.input.kind]}</span>
+                  <code>{short(a.input.value ?? a.input.request?.to ?? a.input.request?.from)}</code>
+                  <span className="muted small">{chainName(a.chainId)}</span>
+                  <span className={`pill ${a.mode}`}>{a.mode}</span>
+                  <span className="muted small push hide-sm">{new Date(a.createdAt).toLocaleString()}</span>
                 </li>
               ))}
             </ul>
