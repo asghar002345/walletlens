@@ -125,7 +125,7 @@ export function MetricsPage() {
                 </div>
               </section>
 
-              <div className="grid2">
+              <div className="grid-even">
                 <section className="card" aria-labelledby="fb-h">
                   <h2 id="fb-h">Fallbacks</h2>
                   {data.fallbacks.byPath.length === 0 ? (

@@ -1152,3 +1152,19 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.content > * {
+  min-width: 0;
+}
+.grid-even {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+@media (max-width: 720px) {
+  .grid-even {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stat strong {
+    font-size: 1.1rem;
+  }
+}

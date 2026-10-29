@@ -3,7 +3,7 @@
 An on-chain transaction explainer with a risk check **before you sign**. Paste a testnet tx hash, an
 address, or an unsigned signing request, and WalletLens explains what it does and how risky it looks.
 
-> **Status: work in progress (milestone 5 of 8: UI and wallet connect).**
+> **Status: work in progress (milestone 7 of 8: evals in CI, provider fallback and metrics dashboard).**
 > The API, data model, tool loop, RAG, validated verdict, landing page and wallet connect are built. Evals and the
 > full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
 > No results or metrics are claimed here until the eval harness exists.
@@ -216,14 +216,15 @@ For persistent data use `docker compose up -d` (local MongoDB) and `npm run dev 
 
 ## Scripts
 
-| Command                        | What it does                            |
-| ------------------------------ | --------------------------------------- |
-| `npm run dev:memory -w server` | API with in-memory MongoDB              |
-| `npm run dev`                  | API (needs MongoDB) and client together |
-| `npm test`                     | server and client tests                 |
-| `npm run lint`                 | ESLint (typescript-eslint, react-hooks) |
-| `npm run format:check`         | Prettier check                          |
-| `npm run typecheck` / `build`  | TypeScript check / production build     |
+| Command                        | What it does                              |
+| ------------------------------ | ----------------------------------------- |
+| `npm run dev:memory -w server` | API with in-memory MongoDB                |
+| `npm run dev`                  | API (needs MongoDB) and client together   |
+| `npm test`                     | server and client tests                   |
+| `npm run lint`                 | ESLint (typescript-eslint, react-hooks)   |
+| `npm run format:check`         | Prettier check                            |
+| `npm run typecheck` / `build`  | TypeScript check / production build       |
+| `npm run eval`                 | eval set → `server/evals/results/`, gated |
 
 ## API
 
@@ -239,6 +240,7 @@ All `/api/analyses` routes need the session cookie. Errors are always `{ error: 
 | POST   | `/api/analyses`      | runs the tool loop synchronously; `{ kind: "tx", chainId, value }`, `{ kind: "address", ... }` or `{ kind: "signRequest", chainId, request: { from, to?, value?, data?, gas? } }` |
 | GET    | `/api/analyses`      | your latest 50                                                                                                                                                                    |
 | GET    | `/api/analyses/:id`  | one of yours, else 404                                                                                                                                                            |
+| GET    | `/api/metrics`       | per-provider latency p50/p95, tokens, fallbacks, verdict status, tool latency, today's quota vs caps (your analyses only)                                                         |
 
 ## Free-tier guards
 
@@ -249,8 +251,76 @@ All `/api/analyses` routes need the session cookie. Errors are always `{ error: 
   (conservative defaults in `.env.example`), counted in Mongo so they survive restarts. A rejected call
   does not consume quota.
 - **Caching:** tx lookups are cached in Mongo (`TX_CACHE_TTL_SEC`, default 24h); embeddings for 30 days.
-- **Degradation:** when a cap is hit, WalletLens falls back (chain: live RPC → fixtures; LLM: live provider →
-  mock model today, Groq → Gemini → mock in milestone 7) and records a notice that the UI shows.
+- **Degradation:** when a cap is hit, WalletLens falls back (chain: live RPC → fixtures; LLM: Groq → Gemini →
+  mock) and records a notice that the UI shows.
+
+## Provider fallback
+
+In live mode the model is a chain: **Groq → Gemini → mock**. Each live provider sits behind its own quota caps. An
+HTTP error, a timeout (20 s), a network error or a hit cap moves the run to the next provider. The run then stays on
+that provider, so one analysis doesn't mix models. Each switch is stored on the trace
+(`trace.fallbacks: { from, to, reason }`) and shown as a notice, for example "groq HTTP 503; switched to gemini.".
+
+To see the path without keys, set the dev-only drill `LLM_FAULT_INJECT=groq:503,gemini:cap`. It simulates the
+failures and the run finishes on mock. It is ignored when `NODE_ENV=production`.
+
+The **Metrics** page (`/metrics`) is built from stored traces, tool-call logs and the quota counters. It shows:
+
+- latency p50/p95 per provider and per tool;
+- input and output tokens;
+- fallback paths and counts;
+- first-try, repaired and fallback verdict rates;
+- today's use against each daily cap.
+
+In mock mode, tokens are estimates and latencies are local.
+
+## Evals
+
+`npm run eval` runs a labelled set of **28 cases** (`server/evals/cases.json`, with chain fixtures in
+`server/evals/chain.json`) through the real tool loop. The set has:
+
+- 12 malicious cases: unlimited approve, 4 prompt injections in token names (including zero-width and bidi tricks),
+  2 setApprovalForAll, 2 permit and 2 address poisoning.
+- 5 medium-risk cases.
+- 8 benign cases.
+- 3 no-evidence cases.
+
+Retrieval and the verdict are scored separately:
+
+- **Retrieval:** recall@3 and MRR of the first `retrieveNotes` call against the labelled relevant notes.
+- **Verdict:** `riskLevel` accuracy and a confusion matrix, malicious cases flagged, benign cases marked high,
+  unknown recall and precision (which needs both `unknown` and "don't know"), citation validity (re-checked against
+  the tools that ran and the notes that were retrieved), and the first-try valid rate.
+- **Fallback drill:** Groq fails with HTTP 503, Gemini is capped, and the run must end on mock with a valid verdict.
+
+The run writes `server/evals/results/latest.json` and `latest.md`. It exits non-zero if any score is below
+`server/evals/thresholds.json`, so CI fails. Evals use their own caps (`EVAL_*_PER_MINUTE/PER_DAY`,
+`EVAL_DELAY_MS`, `EVAL_MAX_CASES` in `.env.example`), so a live eval run can't use up the app's quota.
+
+### Results (mock mode)
+
+These are **mock-mode numbers**, from the deterministic rule-based mock model, offline keyword retrieval and fixture
+chain data. They show that the pipeline, the checks and the gate work. They do **not** measure a real LLM.
+
+| Metric                             | Mock-mode result | Gate  |
+| ---------------------------------- | ---------------- | ----- |
+| riskLevel accuracy (28 cases)      | 100%             | ≥ 90% |
+| Malicious flagged high/medium (12) | 100%             | ≥ 95% |
+| Benign marked high (8)             | 0%               | ≤ 5%  |
+| Unknown recall / precision (3)     | 100% / 100%      | 100%  |
+| Citation validity                  | 100%             | 100%  |
+| Retrieval recall@3 (24 labelled)   | 0.799            | ≥ 0.6 |
+| Retrieval MRR                      | 0.958            | ≥ 0.6 |
+| Fallback drill                     | pass             | pass  |
+
+The mock model was written alongside these cases, so a perfect verdict score is expected and says little. The
+retrieval numbers are more informative, since they come from the generic keyword retriever.
+
+## CI
+
+`.github/workflows/ci.yml` runs `npm ci`, lint, the Prettier check, typecheck, tests and `npm run eval` with
+`MOCK_MODE=true`. It needs no secrets and uploads the eval report as an artifact. It has not been run on GitHub yet,
+because the repository is not published.
 
 ## Testing
 
@@ -276,6 +346,10 @@ prefilling the connected address and posting an unsigned request with value in w
 RAG tests check that the note set is valid and covers every required topic, that known queries retrieve the expected
 note, that unrelated queries return nothing, the embedding cache and cap, change-only re-embedding, and both fallbacks
 (cap hit, and `$vectorSearch` unavailable on a non-Atlas MongoDB).
+
+Fallback tests cover each switch reason (HTTP error, cap, timeout), stickiness within a run, the API recording
+fallbacks and notices, and `/api/metrics` (auth, per-user scope, percentiles). Eval tests cover the metric maths, the
+gate, the eval caps and the case coverage. The client has a metrics page test.
 
 ## Design decisions
 
@@ -303,8 +377,8 @@ note, that unrelated queries return nothing, the embedding cache and cap, change
 3. ✅ RAG: ~50 original notes, Gemini embeddings, Atlas Vector Search, offline fallback
 4. ✅ Structured verdict `{ summary, actions[], riskLevel, reasons[], citations[] }` with explicit "don't know"
 5. ✅ UI: landing page, verdict view, wallet connectors, simulate flow
-6. Evals in CI (retrieval and verdict scored separately, incl. prompt injection in token names)
-7. Groq → Gemini fallback and a latency/token dashboard
+6. ✅ Evals in CI (retrieval and verdict scored separately, incl. prompt injection in token names)
+7. ✅ Groq → Gemini → mock fallback and a latency/token dashboard
 8. README results
 
 ## License
