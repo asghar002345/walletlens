@@ -1,0 +1,2 @@
+# False positive: "tokens": <count> in a generated mock-mode eval report (token usage, not a credential).
+3cd46475bf88177b35680324b8ef328cdf936f54:server/evals/results/latest.json:generic-api-key:185
