@@ -3,9 +3,9 @@
 An on-chain transaction explainer with a risk check **before you sign**. Paste a testnet tx hash, an
 address, or an unsigned signing request, and WalletLens explains what it does and how risky it looks.
 
-> **Status: work in progress (milestone 4 of 8: structured verdict).**
-> The API, data model, wallet input, the tool loop, retrieval over curated notes and the validated verdict are built.
-> Wallet connectors, evals and the full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
+> **Status: work in progress (milestone 5 of 8: UI and wallet connect).**
+> The API, data model, tool loop, RAG, validated verdict, landing page and wallet connect are built. Evals and the
+> full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
 > No results or metrics are claimed here until the eval harness exists.
 
 **Safety by design:** WalletLens is read-only. It never holds a private key and never signs or sends a
@@ -50,6 +50,33 @@ flowchart LR
   LR --> KN[(knowledge)]
   AV --> KN
 ```
+
+## Wallet connect and "Simulate signing request"
+
+The client uses wagmi with two connectors: the injected connector (MetaMask or any browser wallet) and the
+WalletConnect (Reown) connector. Only Sepolia and Polygon Amoy are configured, so wagmi can't connect to or switch
+to mainnet. An unsupported network shows a "switch to Sepolia" prompt.
+
+`VITE_WALLETCONNECT_PROJECT_ID` (in `client/.env.local`, see `client/.env.example`) enables WalletConnect; a free
+Reown project id needs no card. When it is empty the option is hidden and the connect dialog says how to enable it.
+
+Connecting only reads the address and chain. "Simulate signing request" builds an unsigned transaction (from, to,
+value in ETH/POL converted to wei, calldata), prefilled with the connected address, or accepts pasted JSON. Demo
+presets (unlimited approve, plain transfer, unknown call) use the offline fixture addresses. The request goes to the
+API for analysis. It is never sent to the wallet.
+
+**Never-sign guard.** `scripts/never-sign.mjs` lists every wallet API that signs, sends or creates keys
+(`sendTransaction`, `signMessage`, `signTypedData`, `writeContract`, `useSendTransaction`, `createWalletClient`,
+`privateKeyToAccount`, `eth_sign`, `personal_sign`, …). An ESLint rule fails on any of them (identifier or string) in
+`client/src` and `server/src`, and `server/test/neverSign.test.ts` scans both source trees, so the check runs in
+both `npm run lint` and `npm test`.
+
+## UI
+
+Landing page with a hero, how-it-works and trust points; a responsive app (form, history, analysis detail with verdict,
+trace, notes and tool-call log). Loading skeletons, empty and error states throughout. Accessibility basics: skip link,
+labelled inputs with `aria-invalid` / `aria-describedby`, `role="alert"` for errors, an `aria-modal` dialog that
+closes on Escape and restores focus, visible focus rings, and `prefers-reduced-motion` support.
 
 ## Tool loop
 
@@ -242,6 +269,10 @@ errors). Groq and Gemini adapters are tested with a fake `fetch`, so no key or n
 Verdict tests cover the schema, fake tool and note references, the "unknown" rules, mock verdicts for each risk level,
 a successful repair, a hallucinated citation that ends in the fallback, and that tools are disabled in the repair turn.
 
+Client wallet tests use wagmi's `mock` connector: testnet-only config, WalletConnect only with a project id, the
+connect dialog (accessible, hidden-WalletConnect note, Escape), connecting and disconnecting, the simulate form
+prefilling the connected address and posting an unsigned request with value in wei, and client-side validation.
+
 RAG tests check that the note set is valid and covers every required topic, that known queries retrieve the expected
 note, that unrelated queries return nothing, the embedding cache and cap, change-only re-embedding, and both fallbacks
 (cap hit, and `$vectorSearch` unavailable on a non-Atlas MongoDB).
@@ -271,7 +302,7 @@ note, that unrelated queries return nothing, the embedding cache and cap, change
 2. ✅ Tool loop: `getTx`, `decodeCalldata`, `getTokenApprovals`, `lookupContract` with Zod args, logged to `toolcalls`
 3. ✅ RAG: ~50 original notes, Gemini embeddings, Atlas Vector Search, offline fallback
 4. ✅ Structured verdict `{ summary, actions[], riskLevel, reasons[], citations[] }` with explicit "don't know"
-5. UI: verdict view, wallet connectors
+5. ✅ UI: landing page, verdict view, wallet connectors, simulate flow
 6. Evals in CI (retrieval and verdict scored separately, incl. prompt injection in token names)
 7. Groq → Gemini fallback and a latency/token dashboard
 8. README results
