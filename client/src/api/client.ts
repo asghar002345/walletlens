@@ -27,8 +27,17 @@ export interface TraceStep {
   final: boolean;
 }
 
+export interface RetrievedRef {
+  noteId: string;
+  title: string;
+  score: number;
+  sources: string[];
+}
+
 export interface Trace {
   draft: string;
+  retrieved?: RetrievedRef[];
+  citations?: string[];
   provider: string;
   steps: TraceStep[];
   totals: { inputTokens: number; outputTokens: number; latencyMs: number; toolCalls: number };

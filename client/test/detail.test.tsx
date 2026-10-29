@@ -14,7 +14,22 @@ const analysis = {
   notices: ["Mock mode: chain data comes from offline fixtures, not a live RPC."],
   createdAt: "",
   trace: {
-    draft: "Draft (mock): Calls ERC-20 approve.",
+    draft: "Draft (mock): Calls ERC-20 approve. Background: [std-erc20-unlimited] [made-up-id].",
+    retrieved: [
+      {
+        noteId: "std-erc20-unlimited",
+        title: "Unlimited (max uint256) allowances",
+        score: 0.31,
+        sources: ["https://eips.ethereum.org/EIPS/eip-20"],
+      },
+      {
+        noteId: "std-erc20-basics",
+        title: "ERC-20 fungible token basics",
+        score: 0.2,
+        sources: ["https://eips.ethereum.org/EIPS/eip-20"],
+      },
+    ],
+    citations: ["std-erc20-unlimited"],
     provider: "mock",
     steps: [
       {
@@ -84,7 +99,17 @@ describe("AnalysisDetail", () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Draft (mock): Calls ERC-20 approve.")).toBeInTheDocument();
+    expect(await screen.findByText(/Calls ERC-20 approve/)).toBeInTheDocument();
+    // Retrieved notes, with only the cited one marked and linked from the draft.
+    expect(screen.getByRole("heading", { name: "Retrieved notes" })).toBeInTheDocument();
+    expect(screen.getByText("Unlimited (max uint256) allowances")).toBeInTheDocument();
+    expect(screen.getAllByText("cited")).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "std-erc20-unlimited" })[0]).toHaveAttribute(
+      "href",
+      "#note-std-erc20-unlimited",
+    );
+    // An id that was never retrieved is not rendered as a citation link.
+    expect(screen.queryByRole("link", { name: "made-up-id" })).toBeNull();
     expect(screen.getByText("Requested lookupContract", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("untrusted text flagged")).toBeInTheDocument();
     expect(screen.getByText("rejected")).toBeInTheDocument();

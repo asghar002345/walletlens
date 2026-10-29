@@ -2,6 +2,25 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, analysesApi, type Analysis, type ToolCallLog } from "../api/client";
 
+/** Render the draft with [noteId] citations as links to the retrieved-notes list. Unretrieved ids stay plain text. */
+function DraftText({ text, cited }: { text: string; cited: Set<string> }) {
+  const parts = text.split(/(\[[a-z0-9-]+\])/g);
+  return (
+    <p className="draft">
+      {parts.map((p, i) => {
+        const id = p.match(/^\[([a-z0-9-]+)\]$/)?.[1];
+        return id && cited.has(id) ? (
+          <a key={i} href={`#note-${id}`} className="cite">
+            {id}
+          </a>
+        ) : (
+          <span key={i}>{p}</span>
+        );
+      })}
+    </p>
+  );
+}
+
 const CHAIN_NAME: Record<number, string> = { 11155111: "Sepolia", 80002: "Polygon Amoy" };
 
 /** Walk a tool result and collect any untrusted strings the server flagged as instruction-like. */
@@ -105,7 +124,17 @@ export function AnalysisDetail() {
           <code className="target">{target}</code>
           {t && (
             <>
-              <p className="draft">{t.draft}</p>
+              <DraftText text={t.draft} cited={new Set(t.citations ?? [])} />
+              {(t.citations?.length ?? 0) > 0 && (
+                <div className="row small">
+                  <span className="muted">Citations:</span>
+                  {t.citations!.map((c) => (
+                    <a key={c} href={`#note-${c}`} className="pill cite-pill">
+                      {c}
+                    </a>
+                  ))}
+                </div>
+              )}
               <p className="muted small">
                 Draft explanation only. The structured risk verdict arrives in a later milestone.
               </p>
@@ -152,6 +181,41 @@ export function AnalysisDetail() {
                 </li>
               ))}
             </ol>
+          </section>
+        )}
+
+        {t && (
+          <section className="card">
+            <h2>Retrieved notes</h2>
+            <p className="muted small">
+              Curated WalletLens notes returned by <code>retrieveNotes</code>, ranked by similarity. Cited notes are the
+              ones the explanation relies on.
+            </p>
+            {(t.retrieved?.length ?? 0) === 0 ? (
+              <p className="muted">No notes were retrieved for this analysis.</p>
+            ) : (
+              <ul className="notes">
+                {t.retrieved!.map((n) => (
+                  <li key={n.noteId} id={`note-${n.noteId}`} className={t.citations?.includes(n.noteId) ? "cited" : ""}>
+                    <div className="row between">
+                      <b>{n.title}</b>
+                      <span className="row">
+                        {t.citations?.includes(n.noteId) && <span className="pill ok">cited</span>}
+                        <span className="pill">score {n.score.toFixed(2)}</span>
+                      </span>
+                    </div>
+                    <code className="muted small">{n.noteId}</code>
+                    <div className="sources small">
+                      {n.sources.map((src) => (
+                        <a key={src} href={src} target="_blank" rel="noreferrer noopener">
+                          {src.replace(/^https?:\/\//, "")}
+                        </a>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
 

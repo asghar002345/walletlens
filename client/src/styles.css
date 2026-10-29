@@ -407,3 +407,49 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+.cite {
+  display: inline-block;
+  margin: 0 0.15rem;
+  padding: 0 0.4rem;
+  border-radius: 5px;
+  background: #1c2742;
+  color: #8aa2ff;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  text-decoration: none;
+}
+.cite-pill {
+  text-decoration: none;
+  color: #8aa2ff;
+}
+.notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.notes li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  scroll-margin-top: 1rem;
+}
+.notes li.cited {
+  border-color: #2c5e57;
+}
+.notes li:target {
+  outline: 2px solid var(--accent);
+}
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+}
+.sources a {
+  word-break: break-all;
+}
