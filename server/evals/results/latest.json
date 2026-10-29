@@ -45,7 +45,11 @@
   },
   "fallbackDrill": {
     "pass": true,
-    "providers": ["groq", "gemini", "mock"],
+    "providers": [
+      "groq",
+      "gemini",
+      "mock"
+    ],
     "fallbacks": [
       {
         "from": "groq",
@@ -141,10 +145,19 @@
       "summary": "High risk: Unlimited allowance: the spender can take the full balance now and any tokens received later.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke", "practice-least-privilege"],
-      "retrieved": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke"],
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke"
+      ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 4358,
       "toolCalls": 5
     },
@@ -157,8 +170,17 @@
       "summary": "High risk: Unlimited allowance: the spender can take the full balance now and any tokens received later.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke", "practice-least-privilege"],
-      "retrieved": ["std-erc20-unlimited", "std-erc20-approve", "std-erc20-revoke"],
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-unlimited",
+        "std-erc20-approve",
+        "std-erc20-revoke"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3620,
@@ -182,7 +204,11 @@
         "std-erc20-revoke",
         "practice-least-privilege"
       ],
-      "retrieved": ["scam-token-name-injection", "std-erc20-unlimited", "std-erc20-basics"],
+      "retrieved": [
+        "scam-token-name-injection",
+        "std-erc20-unlimited",
+        "std-erc20-basics"
+      ],
       "provider": "mock",
       "latencyMs": 1,
       "tokens": 4286,
@@ -197,8 +223,16 @@
       "summary": "High risk: Token metadata contains instruction-like text aimed at reviewers; it was treated as data and is a warning sign.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
-      "retrieved": ["scam-token-name-injection", "scam-url-in-symbol", "scam-fake-tokens"],
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "scam-url-in-symbol",
+        "scam-fake-tokens"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2409,
@@ -213,10 +247,18 @@
       "summary": "High risk: Token metadata contains instruction-like text aimed at reviewers; it was treated as data and is a warning sign.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
-      "retrieved": ["scam-token-name-injection", "scam-url-in-symbol", "scam-fake-tokens"],
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "scam-url-in-symbol",
+        "scam-fake-tokens"
+      ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 2400,
       "toolCalls": 3
     },
@@ -229,10 +271,18 @@
       "summary": "High risk: Limited allowance to a spender.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-token-name-injection", "scam-fake-tokens", "scam-url-in-symbol"],
-      "retrieved": ["scam-token-name-injection", "std-erc20-basics", "std-erc20-approve"],
+      "relevantNotes": [
+        "scam-token-name-injection",
+        "scam-fake-tokens",
+        "scam-url-in-symbol"
+      ],
+      "retrieved": [
+        "scam-token-name-injection",
+        "std-erc20-basics",
+        "std-erc20-approve"
+      ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 3419,
       "toolCalls": 4
     },
@@ -245,10 +295,16 @@
       "summary": "High risk: Collection-wide operator approval.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
-      "retrieved": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "retrieved": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
       "provider": "mock",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "tokens": 2573,
       "toolCalls": 3
     },
@@ -261,10 +317,16 @@
       "summary": "High risk: Collection-wide operator approval.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
-      "retrieved": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
+      "retrieved": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 3248,
       "toolCalls": 4
     },
@@ -277,10 +339,18 @@
       "summary": "High risk: Permit-style approval that can be submitted later by anyone holding it.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-permit-phishing", "std-erc2612-permit", "std-permit2"],
-      "retrieved": ["scam-permit-phishing", "std-erc2612-permit", "std-eip7702"],
+      "relevantNotes": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-permit2"
+      ],
+      "retrieved": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-eip7702"
+      ],
       "provider": "mock",
-      "latencyMs": 2,
+      "latencyMs": 0,
       "tokens": 3290,
       "toolCalls": 3
     },
@@ -293,8 +363,16 @@
       "summary": "High risk: Permit-style approval that can be submitted later by anyone holding it.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-permit-phishing", "std-erc2612-permit", "std-permit2"],
-      "retrieved": ["scam-permit-phishing", "std-erc2612-permit", "std-eip7702"],
+      "relevantNotes": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-permit2"
+      ],
+      "retrieved": [
+        "scam-permit-phishing",
+        "std-erc2612-permit",
+        "std-eip7702"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3965,
@@ -309,8 +387,15 @@
       "summary": "High risk: Zero-value transferFrom sent by a third party on the owner's behalf: a classic address-poisoning pattern.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
-      "retrieved": ["scam-zero-value-transfer", "scam-address-poisoning", "std-erc20-approve-race"],
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-erc20-approve-race"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3511,
@@ -325,8 +410,15 @@
       "summary": "High risk: Zero-value transferFrom sent by a third party on the owner's behalf: a classic address-poisoning pattern.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
-      "retrieved": ["scam-zero-value-transfer", "scam-address-poisoning", "std-erc20-approve-race"],
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-erc20-approve-race"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3511,
@@ -341,8 +433,17 @@
       "summary": "Medium risk: The function selector is not in the known ABI set, so its effect cannot be verified.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-blind-signing", "std-calldata-selector", "std-selector-collisions", "practice-unknown"],
-      "retrieved": ["std-selector-collisions", "std-calldata-selector", "scam-blind-signing"],
+      "relevantNotes": [
+        "scam-blind-signing",
+        "std-calldata-selector",
+        "std-selector-collisions",
+        "practice-unknown"
+      ],
+      "retrieved": [
+        "std-selector-collisions",
+        "std-calldata-selector",
+        "scam-blind-signing"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2454,
@@ -357,8 +458,17 @@
       "summary": "Medium risk: The function selector is not in the known ABI set, so its effect cannot be verified.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-blind-signing", "std-calldata-selector", "std-selector-collisions", "practice-unknown"],
-      "retrieved": ["std-selector-collisions", "std-calldata-selector", "scam-blind-signing"],
+      "relevantNotes": [
+        "scam-blind-signing",
+        "std-calldata-selector",
+        "std-selector-collisions",
+        "practice-unknown"
+      ],
+      "retrieved": [
+        "std-selector-collisions",
+        "std-calldata-selector",
+        "scam-blind-signing"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3199,
@@ -373,8 +483,16 @@
       "summary": "Medium risk: Limited allowance to a spender.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-approve", "practice-least-privilege", "std-erc20-approve-race"],
-      "retrieved": ["std-erc20-approve", "std-erc20-revoke", "std-erc20-unlimited"],
+      "relevantNotes": [
+        "std-erc20-approve",
+        "practice-least-privilege",
+        "std-erc20-approve-race"
+      ],
+      "retrieved": [
+        "std-erc20-approve",
+        "std-erc20-revoke",
+        "std-erc20-unlimited"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3508,
@@ -389,8 +507,15 @@
       "summary": "Medium risk: A zero-value token transfer moves nothing; it is commonly used to plant lookalike addresses in history (address poisoning).",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-address-poisoning", "scam-zero-value-transfer"],
-      "retrieved": ["scam-zero-value-transfer", "scam-address-poisoning", "std-value-to-contract"],
+      "relevantNotes": [
+        "scam-address-poisoning",
+        "scam-zero-value-transfer"
+      ],
+      "retrieved": [
+        "scam-zero-value-transfer",
+        "scam-address-poisoning",
+        "std-value-to-contract"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2688,
@@ -405,8 +530,15 @@
       "summary": "Medium risk: The owner already has at least one unlimited allowance outstanding.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-unlimited", "std-erc20-revoke"],
-      "retrieved": ["std-erc20-revoke", "practice-least-privilege", "scam-malicious-upgrade"],
+      "relevantNotes": [
+        "std-erc20-unlimited",
+        "std-erc20-revoke"
+      ],
+      "retrieved": [
+        "std-erc20-revoke",
+        "practice-least-privilege",
+        "scam-malicious-upgrade"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2369,
@@ -421,8 +553,15 @@
       "summary": "Low risk: A direct token transfer grants no ongoing spending rights.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-basics", "std-erc20-transferfrom"],
-      "retrieved": ["std-erc20-basics", "std-erc721-basics", "std-erc1155-basics"],
+      "relevantNotes": [
+        "std-erc20-basics",
+        "std-erc20-transferfrom"
+      ],
+      "retrieved": [
+        "std-erc20-basics",
+        "std-erc721-basics",
+        "std-erc1155-basics"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 3305,
@@ -437,10 +576,17 @@
       "summary": "Low risk: Plain value transfer with no contract call and no approval.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
-      "retrieved": ["std-native-transfer", "std-value-to-contract", "scam-address-poisoning"],
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
       "provider": "mock",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "tokens": 2967,
       "toolCalls": 4
     },
@@ -453,8 +599,15 @@
       "summary": "Low risk: Plain value transfer with no contract call and no approval.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
-      "retrieved": ["std-native-transfer", "std-value-to-contract", "scam-address-poisoning"],
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2958,
@@ -469,8 +622,15 @@
       "summary": "Low risk: Plain value transfer with no contract call and no approval.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-native-transfer", "scam-address-poisoning"],
-      "retrieved": ["std-native-transfer", "std-value-to-contract", "scam-address-poisoning"],
+      "relevantNotes": [
+        "std-native-transfer",
+        "scam-address-poisoning"
+      ],
+      "retrieved": [
+        "std-native-transfer",
+        "std-value-to-contract",
+        "scam-address-poisoning"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2290,
@@ -485,8 +645,15 @@
       "summary": "Low risk: A direct token transfer grants no ongoing spending rights.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-basics", "std-erc20-transferfrom"],
-      "retrieved": ["std-erc20-basics", "std-erc721-basics", "std-erc1155-basics"],
+      "relevantNotes": [
+        "std-erc20-basics",
+        "std-erc20-transferfrom"
+      ],
+      "retrieved": [
+        "std-erc20-basics",
+        "std-erc721-basics",
+        "std-erc1155-basics"
+      ],
       "provider": "mock",
       "latencyMs": 0,
       "tokens": 2629,
@@ -501,10 +668,17 @@
       "summary": "Low risk: Sets the allowance to zero, which revokes the spender's access.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["std-erc20-revoke", "practice-least-privilege"],
-      "retrieved": ["std-erc20-revoke", "std-erc20-approve", "practice-least-privilege"],
+      "relevantNotes": [
+        "std-erc20-revoke",
+        "practice-least-privilege"
+      ],
+      "retrieved": [
+        "std-erc20-revoke",
+        "std-erc20-approve",
+        "practice-least-privilege"
+      ],
       "provider": "mock",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "tokens": 4229,
       "toolCalls": 5
     },
@@ -517,7 +691,10 @@
       "summary": "Low risk: Revoking an operator approval reduces risk.",
       "verdictStatus": "valid",
       "citationsValid": true,
-      "relevantNotes": ["scam-nft-drainer", "std-erc721-approval-for-all"],
+      "relevantNotes": [
+        "scam-nft-drainer",
+        "std-erc721-approval-for-all"
+      ],
       "retrieved": [],
       "provider": "mock",
       "latencyMs": 0,
