@@ -3,9 +3,9 @@
 An on-chain transaction explainer with a risk check **before you sign**. Paste a testnet tx hash, an
 address, or an unsigned signing request, and WalletLens explains what it does and how risky it looks.
 
-> **Status: work in progress (milestone 3 of 8: RAG).**
-> The API, data model, wallet input, the tool loop and retrieval over curated notes are built. Structured verdicts,
-> evals and the full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
+> **Status: work in progress (milestone 4 of 8: structured verdict).**
+> The API, data model, wallet input, the tool loop, retrieval over curated notes and the validated verdict are built.
+> Wallet connectors, evals and the full provider fallback are planned and not built yet. Today the loop produces a short draft explanation, not a verdict.
 > No results or metrics are claimed here until the eval harness exists.
 
 **Safety by design:** WalletLens is read-only. It never holds a private key and never signs or sends a
@@ -68,6 +68,37 @@ wrapped as `{ "untrusted_tool_output": ... }`. The loop ends when the model answ
 
 There is no tool that signs, sends or holds keys.
 
+## Structured verdict
+
+The model's final answer must be JSON matching `server/src/verdict/schema.ts`:
+
+```ts
+{
+  summary: string,
+  actions: { kind: "native-transfer" | "token-transfer" | "approval" | "operator-approval"
+               | "signature-approval" | "contract-call" | "unknown", description: string }[],
+  riskLevel: "low" | "medium" | "high" | "unknown",
+  reasons: { text: string, evidence: ("tool:<toolName>" | "note:<noteId>")[] }[],  // at least 1 evidence each
+  citations: string[]   // noteIds
+}
+```
+
+`checkVerdict` runs three layers: JSON parse (code fences allowed), the Zod shape (strict, no extra keys), and an
+evidence check against what actually happened in this analysis:
+
+- every `tool:` reference must be a tool that returned successfully; every `note:` reference and citation must be a
+  note `retrieveNotes` returned;
+- `riskLevel: "unknown"` must say "don't know" in the summary; any other level needs at least one reason;
+- if no evidence was gathered at all, anything other than `unknown` is rejected.
+
+On failure the loop sends the errors back once and asks for corrected JSON with tools disabled. If the second answer
+also fails, the verdict becomes `unknown` ("I don't know…") and a notice explains why. The trace records
+`verdictStatus` (`valid`, `repaired`, `fallback`) and the validation errors.
+
+The mock model builds its verdict from deterministic rules (unlimited / operator / permit approvals and injected token
+text → high; limited approvals and unknown selectors → medium; plain transfers → low; no evidence → unknown) and goes
+through the same checks.
+
 ## RAG: curated notes
 
 `server/knowledge/notes.json` holds 52 short notes written for this project, each with an id, title, tags and links
@@ -83,6 +114,12 @@ Retrieval sits behind a `Retriever` interface:
 | `LocalRetriever`    | default (mock mode, or any live setup without Atlas)                | deterministic hashed unigram + bigram vectors, cosine similarity        |
 | `AtlasRetriever`    | `MOCK_MODE=false`, `GEMINI_API_KEY` set, `ATLAS_VECTOR_SEARCH=true` | Gemini `gemini-embedding-001` (768 dims) + `$vectorSearch`              |
 | `FallbackRetriever` | wraps Atlas                                                         | on an embedding cap or Atlas error, uses local search and adds a notice |
+
+Both backends accept `boostTags`: notes with a matching tag get +0.25 after the relevance cut-off, so a tag can
+reorder relevant notes but can't pull in an unrelated one. The loop derives boost tags from evidence
+(`unlimited-approval` → `unlimited`, operator approval → `operator`, permit → `permit`, unknown selector →
+`decoding`, flagged token text → `prompt-injection`). This puts the unlimited-allowance note first for an unlimited
+approve, where plain keyword ranking placed it third.
 
 The local backend is keyword similarity, not semantic search. It is free, instant and reproducible, which is what
 tests and CI need.
@@ -202,6 +239,9 @@ login, field errors, form validation and the trace / tool-call log view.
 The tool loop is tested with the mock provider and with a scripted provider (bad args, endless tool calls, quota
 errors). Groq and Gemini adapters are tested with a fake `fetch`, so no key or network is needed.
 
+Verdict tests cover the schema, fake tool and note references, the "unknown" rules, mock verdicts for each risk level,
+a successful repair, a hallucinated citation that ends in the fallback, and that tools are disabled in the repair turn.
+
 RAG tests check that the note set is valid and covers every required topic, that known queries retrieve the expected
 note, that unrelated queries return nothing, the embedding cache and cap, change-only re-embedding, and both fallbacks
 (cap hit, and `$vectorSearch` unavailable on a non-Atlas MongoDB).
@@ -212,7 +252,9 @@ note, that unrelated queries return nothing, the embedding cache and cap, change
   so tests and evals are deterministic and offline. LLM providers follow the same pattern (`LlmProvider`).
 - **Mock model as a planner, not canned text.** The mock reads the input and earlier tool results and picks the next
   tool, so the real loop, validation and logging run end to end with no keys.
-- **Citations are checked, not trusted.** Only ids that `retrieveNotes` actually returned count as citations.
+- **Citations are checked, not trusted.** Only ids that `retrieveNotes` actually returned count as citations, and
+  only tools that actually returned data count as evidence.
+- **"Unknown" is a valid answer.** Failing closed to `unknown` is safer than showing an unvalidated guess.
 - **Same collection for both backends.** Local and Atlas retrieval read the same `knowledge` documents, so switching
   modes changes ranking quality, not content.
 - **Log in the runner, not in each tool.** One place guarantees every call, including rejected ones, is audited.
@@ -228,7 +270,7 @@ note, that unrelated queries return nothing, the embedding cache and cap, change
 1. ✅ API, schema, wallet input (paste; WalletConnect/MetaMask SDK capture comes with the UI milestone)
 2. ✅ Tool loop: `getTx`, `decodeCalldata`, `getTokenApprovals`, `lookupContract` with Zod args, logged to `toolcalls`
 3. ✅ RAG: ~50 original notes, Gemini embeddings, Atlas Vector Search, offline fallback
-4. Structured verdict `{ summary, actions[], riskLevel, reasons[], citations[] }` with explicit "don't know"
+4. ✅ Structured verdict `{ summary, actions[], riskLevel, reasons[], citations[] }` with explicit "don't know"
 5. UI: verdict view, wallet connectors
 6. Evals in CI (retrieval and verdict scored separately, incl. prompt injection in token names)
 7. Groq → Gemini fallback and a latency/token dashboard
