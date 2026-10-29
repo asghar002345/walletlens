@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthForm } from "./components/AuthForm";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
+import { AnalysisDetail } from "./pages/AnalysisDetail";
 
 export function App() {
   return (
@@ -13,6 +14,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analyses/:id"
+        element={
+          <ProtectedRoute>
+            <AnalysisDetail />
           </ProtectedRoute>
         }
       />

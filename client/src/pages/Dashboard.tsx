@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { analysesApi, type Analysis } from "../api/client";
 import { useAuth } from "../auth";
 import { AnalysisForm } from "../components/AnalysisForm";
@@ -10,6 +11,7 @@ export function Dashboard() {
   const { user, logout } = useAuth();
   const [analyses, setAnalyses] = useState<Analysis[] | null>(null);
   const [mockMode, setMockMode] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     analysesApi.list().then((r) => setAnalyses(r.analyses));
@@ -29,11 +31,12 @@ export function Dashboard() {
       </header>
       {mockMode && (
         <div className="notice" role="status">
-          Mock mode: chain data and AI responses come from offline fixtures. No API keys are used.
+          Mock mode: chain data comes from offline sample fixtures and the AI steps use a deterministic offline mock
+          model. No API keys are used.
         </div>
       )}
       <main className="content">
-        <AnalysisForm onCreated={(a) => setAnalyses((prev) => [a, ...(prev ?? [])])} />
+        <AnalysisForm onCreated={(a) => navigate(`/analyses/${a.id}`)} />
         <section className="card">
           <h2>Recent analyses</h2>
           {analyses === null ? (
@@ -47,11 +50,12 @@ export function Dashboard() {
             <ul className="list">
               {analyses.map((a) => (
                 <li key={a.id}>
+                  <Link className="rowlink" to={`/analyses/${a.id}`} aria-label={`Open ${a.input.kind} analysis`} />
                   <span className="pill">{a.input.kind}</span>
                   <code>{short(a.input.value ?? a.input.request?.to)}</code>
                   <span className="muted small">{CHAIN_NAME[a.chainId]}</span>
                   <span className={`pill ${a.mode}`}>{a.mode}</span>
-                  <span className="pill">{a.status === "pending" ? "verdict pending" : a.status}</span>
+                  <span className="pill">{a.trace ? `${a.trace.totals.toolCalls} tool calls` : a.status}</span>
                 </li>
               ))}
             </ul>

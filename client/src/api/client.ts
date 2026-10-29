@@ -12,6 +12,37 @@ export interface Analysis {
   status: "pending" | "complete" | "failed";
   mode: "mock" | "live";
   notices: string[];
+  trace: Trace | null;
+  createdAt: string;
+}
+
+export interface TraceStep {
+  step: number;
+  provider: string;
+  model: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  toolCalls: { name: string; ok: boolean; error?: string }[];
+  final: boolean;
+}
+
+export interface Trace {
+  draft: string;
+  provider: string;
+  steps: TraceStep[];
+  totals: { inputTokens: number; outputTokens: number; latencyMs: number; toolCalls: number };
+}
+
+export interface ToolCallLog {
+  id: string;
+  tool: string;
+  args: unknown;
+  ok: boolean;
+  result?: unknown;
+  error?: string;
+  latencyMs: number;
+  cached: boolean;
   createdAt: string;
 }
 
@@ -56,5 +87,7 @@ export const authApi = {
 export const analysesApi = {
   list: () => api<{ analyses: Analysis[] }>("/analyses"),
   create: (input: Record<string, unknown>) => post<{ analysis: Analysis }>("/analyses", input),
+  get: (id: string) => api<{ analysis: Analysis }>(`/analyses/${id}`),
+  toolCalls: (id: string) => api<{ toolCalls: ToolCallLog[] }>(`/analyses/${id}/toolcalls`),
   health: () => api<{ ok: boolean; mockMode: boolean }>("/health"),
 };
