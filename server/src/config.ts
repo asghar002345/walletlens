@@ -9,6 +9,8 @@ export interface AppConfig {
   secureCookies: boolean;
   /** true (default) = no keys needed: fixture chain data, mocked LLM and embeddings. */
   mockMode: boolean;
+  /** Proxy hops in front of the API (Render = 1; Vercel rewrite → Render = 2). */
+  trustProxyHops: number;
   /** Dev-only fallback drill, e.g. "groq:503,gemini:cap". Ignored in production. */
   faultInject?: string;
   rpcUrls: { 11155111?: string; 80002?: string };
@@ -42,6 +44,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     clientOrigin: env.CLIENT_ORIGIN ?? "http://localhost:5173",
     secureCookies: env.NODE_ENV === "production",
     mockMode: env.MOCK_MODE !== "false",
+    trustProxyHops: int(env.TRUST_PROXY_HOPS, 1),
     faultInject: env.NODE_ENV === "production" ? undefined : env.LLM_FAULT_INJECT || undefined,
     rpcUrls: { 11155111: env.SEPOLIA_RPC_URL || undefined, 80002: env.AMOY_RPC_URL || undefined },
     apiRateLimit: { windowMs: int(env.API_RATE_WINDOW_MS, 60_000), max: int(env.API_RATE_MAX, 60) },

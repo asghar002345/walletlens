@@ -26,7 +26,7 @@ export function createApp(
   deps: { liveChain?: ChainReader | null; llm?: LlmProvider; retriever?: Retriever } = {},
 ) {
   const app = express();
-  app.set("trust proxy", 1); // behind Render/Vercel proxies, so req.ip is the client IP
+  app.set("trust proxy", config.trustProxyHops); // behind Render (and the Vercel rewrite), so req.ip is the client IP
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());

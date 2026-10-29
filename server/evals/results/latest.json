@@ -210,7 +210,7 @@
         "std-erc20-basics"
       ],
       "provider": "mock",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "tokens": 4286,
       "toolCalls": 5
     },
@@ -258,7 +258,7 @@
         "scam-fake-tokens"
       ],
       "provider": "mock",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "tokens": 2400,
       "toolCalls": 3
     },
@@ -304,7 +304,7 @@
         "std-erc721-approval-for-all"
       ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 2573,
       "toolCalls": 3
     },
@@ -397,7 +397,7 @@
         "std-erc20-approve-race"
       ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 3511,
       "toolCalls": 4
     },
@@ -540,7 +540,7 @@
         "scam-malicious-upgrade"
       ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 2369,
       "toolCalls": 3
     },
@@ -632,7 +632,7 @@
         "scam-address-poisoning"
       ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 2290,
       "toolCalls": 3
     },
@@ -678,7 +678,7 @@
         "practice-least-privilege"
       ],
       "provider": "mock",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "tokens": 4229,
       "toolCalls": 5
     },
