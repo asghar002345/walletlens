@@ -53,6 +53,8 @@ export interface AgentRun {
   citations: string[];
   steps: TraceStep[];
   provider: string;
+  /** Provider switches during this run (Groq → Gemini → mock), with reasons. */
+  fallbacks: { from: string; to: string; reason: string; at: string }[];
   notices: string[];
   totals: { inputTokens: number; outputTokens: number; latencyMs: number; toolCalls: number };
 }
@@ -77,7 +79,8 @@ export async function runAgent(
   ];
   const steps: TraceStep[] = [];
   const notices: string[] = [];
-  let active = provider;
+  let active = provider.forRun?.() ?? provider;
+  const fallbacks: AgentRun["fallbacks"] = [];
   let draft = "";
   const retrieved = new Map<string, RetrievedRef>();
   const okTools = new Set<string>();
@@ -94,9 +97,13 @@ export async function runAgent(
       active = new MockProvider();
       res = await active.chat(messages, offered);
     }
+    for (const ev of active.takeEvents?.() ?? []) {
+      fallbacks.push(ev);
+      notices.push(`${ev.from} ${ev.reason}; switched to ${ev.to}${ev.to === "mock" ? " (offline mock model)" : ""}.`);
+    }
     const trace: TraceStep = {
       step: steps.length + 1,
-      provider: active.name,
+      provider: res.provider ?? active.name,
       model: res.model,
       latencyMs: Date.now() - started,
       inputTokens: res.usage.inputTokens,
@@ -176,7 +183,8 @@ export async function runAgent(
     retrieved: [...retrieved.values()].sort((a, b) => b.score - a.score),
     citations: verdict.citations,
     steps,
-    provider: active.name,
+    provider: steps.at(-1)?.provider ?? active.name,
+    fallbacks,
     notices,
     totals: {
       inputTokens: sum("inputTokens"),

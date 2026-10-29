@@ -13,7 +13,7 @@ export class GeminiProvider implements LlmProvider {
   constructor(
     private apiKey: string,
     private model = "gemini-2.5-flash",
-    private fetchFn: FetchLike = fetch,
+    private fetchFn: FetchLike = (u, i) => fetch(u, i),
   ) {}
 
   async chat(messages: ChatMessage[], tools: ToolDeclaration[]): Promise<ChatResult> {
@@ -25,6 +25,7 @@ export class GeminiProvider implements LlmProvider {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
     const res = await this.fetchFn(url, {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: { "x-goog-api-key": this.apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },

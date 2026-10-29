@@ -16,6 +16,7 @@ import { selectProvider } from "./llm/select.js";
 import { selectRetriever } from "./rag/select.js";
 import type { Retriever } from "./rag/types.js";
 import { knowledgeRouter } from "./routes/knowledge.js";
+import { metricsRouter } from "./routes/metrics.js";
 import type { AppConfig } from "./config.js";
 
 const FIXTURES = fileURLToPath(new URL("../fixtures/chain/sepolia.json", import.meta.url));
@@ -53,6 +54,7 @@ export function createApp(
   });
   app.use("/api/auth", authRouter(config));
   app.use("/api/knowledge", knowledgeRouter());
+  app.use("/api/metrics", metricsRouter(config));
   app.use(
     "/api/analyses",
     analysesRouter(config, chain, deps.llm ?? selectProvider(config), deps.retriever ?? selectRetriever(config)),

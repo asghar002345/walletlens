@@ -13,12 +13,13 @@ export class GroqProvider implements LlmProvider {
   constructor(
     private apiKey: string,
     private model = "llama-3.3-70b-versatile",
-    private fetchFn: FetchLike = fetch,
+    private fetchFn: FetchLike = (u, i) => fetch(u, i),
   ) {}
 
   async chat(messages: ChatMessage[], tools: ToolDeclaration[]): Promise<ChatResult> {
     const res = await this.fetchFn("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: this.model,

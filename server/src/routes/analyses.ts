@@ -59,7 +59,8 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm
       analysis.trace = run;
       analysis.verdict = run.verdict;
       analysis.notices = [...new Set([...analysis.notices, ...run.notices])];
-      if (run.provider === "mock" && mode === "live") analysis.notices.push("AI step ran on the offline mock model.");
+      if (run.provider === "mock" && (mode === "live" || run.fallbacks.length))
+        analysis.notices.push("AI step ran on the offline mock model.");
       analysis.status = "complete";
     } catch (err) {
       analysis.status = "failed";
