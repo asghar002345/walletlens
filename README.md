@@ -179,4 +179,4 @@ errors). Groq and Gemini adapters are tested with a fake `fetch`, so no key or n
 
 ## License
 
-Not chosen yet.
+MIT, see [LICENSE](LICENSE).
