@@ -52,6 +52,7 @@ export class MockProvider implements LlmProvider {
     } else {
       add("lookupContract", { chainId, address: input.value });
       add("getTokenApprovals", { chainId, owner: input.value });
+      if (results.has("getTokenApprovals")) this.addRetrieval(add, results);
       return calls;
     }
     if (data) add("decodeCalldata", { data });
@@ -59,18 +60,35 @@ export class MockProvider implements LlmProvider {
     const decoded = unwrap(results.get("decodeCalldata")) as { functionName?: string } | undefined;
     if (from && to && decoded?.functionName === "approve")
       add("getTokenApprovals", { chainId, owner: from, token: to });
+    // Retrieve background only once the evidence tools have run, so the query reflects what was found.
+    if (calls.every((c) => results.has(c.name))) this.addRetrieval(add, results);
     return calls;
+  }
+
+  /** Build a retrieval query from evidence flags (never from untrusted text itself). */
+  private addRetrieval(add: (name: string, args: unknown) => void, results: Map<string, unknown>) {
+    const decoded = unwrap(results.get("decodeCalldata")) as
+      { kind?: string; functionName?: string; flags?: string[] } | undefined;
+    const contract = unwrap(results.get("lookupContract")) as ContractView | undefined;
+    const approvals = unwrap(results.get("getTokenApprovals")) as { approvals?: { unlimited: boolean }[] } | undefined;
+    const terms: string[] = [];
+    if (decoded?.flags?.includes("unlimited-approval")) terms.push("unlimited ERC-20 approve allowance");
+    else if (decoded?.functionName === "approve") terms.push("ERC-20 approve allowance spender");
+    if (decoded?.flags?.includes("operator-approval-all")) terms.push("setApprovalForAll operator drainer");
+    if (decoded?.flags?.includes("offchain-signature-approval")) terms.push("permit signature phishing");
+    if (decoded?.functionName === "transfer") terms.push("ERC-20 transfer");
+    if (decoded?.kind === "native-transfer") terms.push("plain native transfer address poisoning");
+    if (decoded?.kind === "unknown") terms.push("unknown function selector blind signing");
+    if (suspicious(contract)) terms.push("token name instructions prompt injection metadata");
+    if (approvals?.approvals?.some((a) => a.unlimited)) terms.push("unlimited approval revoke");
+    if (terms.length) add("retrieveNotes", { query: terms.join(" "), k: 3 });
   }
 
   private draft(input: Input, results: Map<string, unknown>): string {
     const decoded = unwrap(results.get("decodeCalldata")) as
       { kind?: string; functionName?: string; standard?: string; flags?: string[] } | undefined;
-    const contract = unwrap(results.get("lookupContract")) as
-      | {
-          isContract?: boolean;
-          token?: { symbol?: { text?: string; suspicious?: boolean }; name?: { suspicious?: boolean } } | null;
-        }
-      | undefined;
+    const contract = unwrap(results.get("lookupContract")) as ContractView | undefined;
+    const notes = (unwrap(results.get("retrieveNotes")) as { notes?: { noteId: string }[] } | undefined)?.notes ?? [];
     const parts: string[] = [];
     if (input.kind === "address")
       parts.push(contract?.isContract ? "The address is a contract." : "The address is not a contract.");
@@ -78,13 +96,25 @@ export class MockProvider implements LlmProvider {
     if (decoded?.kind === "call") parts.push(`Calls ${decoded.standard} ${decoded.functionName}.`);
     if (decoded?.kind === "unknown") parts.push("The function selector is not recognised, so its effect is unknown.");
     if (decoded?.flags?.includes("unlimited-approval")) parts.push("It grants an unlimited allowance to the spender.");
-    if (contract?.token?.name?.suspicious || contract?.token?.symbol?.suspicious)
+    if (suspicious(contract))
       parts.push("The token metadata contains instruction-like text, which was ignored and is itself a warning sign.");
     if (parts.length === 0) parts.push("Not enough evidence to explain this. I don't know.");
+    else if (notes.length)
+      parts.push(
+        `Background: ${notes
+          .slice(0, 2)
+          .map((n) => `[${n.noteId}]`)
+          .join(" ")}.`,
+      );
     return `Draft (mock): ${parts.join(" ")}`;
   }
 }
 
+type ContractView = {
+  isContract?: boolean;
+  token?: { symbol?: { suspicious?: boolean }; name?: { suspicious?: boolean } } | null;
+};
+const suspicious = (c?: ContractView) => !!(c?.token?.name?.suspicious || c?.token?.symbol?.suspicious);
 const usage = (prompt: string, out: string) => ({
   inputTokens: estimateTokens(prompt),
   outputTokens: estimateTokens(out),

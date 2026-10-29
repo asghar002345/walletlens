@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Types } from "mongoose";
 import { FixtureChainReader } from "../src/chain/fixtureReader.js";
 import { GuardedChainReader } from "../src/chain/guardedReader.js";
+import { LocalRetriever } from "../src/rag/retrievers.js";
 import { ToolCall } from "../src/models/toolCall.js";
 import { MAX_STEPS, runAgent } from "../src/llm/agent.js";
 import { MockProvider } from "../src/llm/mock.js";
@@ -10,7 +11,10 @@ import { QuotaExceededError } from "../src/services/quota.js";
 import type { ChatMessage, ChatResult, LlmProvider } from "../src/llm/types.js";
 
 const fixtures = FixtureChainReader.fromFile(fileURLToPath(new URL("../fixtures/chain/sepolia.json", import.meta.url)));
-const ctx = { chain: new GuardedChainReader(null, fixtures, { perMinute: 1, perDay: 1 }, 60) };
+const ctx = {
+  chain: new GuardedChainReader(null, fixtures, { perMinute: 1, perDay: 1 }, 60),
+  retriever: new LocalRetriever(),
+};
 const SEPOLIA = 11155111;
 
 /** A provider that replays scripted replies, for testing the loop's handling of model behaviour. */
@@ -40,10 +44,12 @@ describe("runAgent with the mock provider", () => {
       ctx,
     );
     const tools = (await ToolCall.find({ analysisId }).sort({ _id: 1 })).map((t) => t.tool);
-    expect(tools).toEqual(["getTx", "decodeCalldata", "lookupContract", "getTokenApprovals"]);
+    expect(tools).toEqual(["getTx", "decodeCalldata", "lookupContract", "getTokenApprovals", "retrieveNotes"]);
     expect(run.draft).toMatch(/unlimited allowance/);
     expect(run.steps.at(-1)?.final).toBe(true);
-    expect(run.totals.toolCalls).toBe(4);
+    expect(run.totals.toolCalls).toBe(5);
+    expect(run.citations.length).toBeGreaterThan(0);
+    expect(run.citations.every((id) => run.retrieved.some((r) => r.noteId === id))).toBe(true);
     expect(run.totals.inputTokens).toBeGreaterThan(0);
   });
 

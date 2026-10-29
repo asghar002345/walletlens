@@ -43,6 +43,7 @@ describe("analyses (mock mode, default)", () => {
       "decodeCalldata",
       "lookupContract",
       "getTokenApprovals",
+      "retrieveNotes",
     ]);
     const other = await loggedInAgent(app);
     expect((await other.get(`/api/analyses/${body.analysis.id}/toolcalls`)).status).toBe(404);

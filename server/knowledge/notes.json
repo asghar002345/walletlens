@@ -1,0 +1,390 @@
+[
+  {
+    "noteId": "std-erc20-basics",
+    "title": "ERC-20 fungible token basics",
+    "tags": ["erc20", "standard"],
+    "body": "ERC-20 defines balanceOf, transfer, transferFrom, approve and allowance. A token is just a contract that keeps a balance table, so anyone can deploy one with any name and symbol. The name and symbol carry no authority and can be copied or contain arbitrary text.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-20",
+      "https://ethereum.org/en/developers/docs/standards/tokens/erc-20/"
+    ]
+  },
+  {
+    "noteId": "std-erc20-approve",
+    "title": "How ERC-20 approve and allowance work",
+    "tags": ["erc20", "approval"],
+    "body": "approve(spender, amount) lets the spender move up to amount of the caller's tokens with transferFrom, at any time, until the allowance is used or reset. The approval itself moves nothing, which is why it feels harmless, but it hands control of those tokens to the spender contract.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://docs.openzeppelin.com/contracts/5.x/api/token/erc20"]
+  },
+  {
+    "noteId": "std-erc20-unlimited",
+    "title": "Unlimited (max uint256) allowances",
+    "tags": ["erc20", "approval", "unlimited"],
+    "body": "Many apps request an allowance of 2^256-1 so the user never has to approve again. If the spender is malicious, compromised or later upgraded, it can take the full balance now and any tokens received later. Approving only the amount needed limits the damage.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://revoke.cash/learn/approvals/what-are-token-approvals"]
+  },
+  {
+    "noteId": "std-erc20-approve-race",
+    "title": "The approve front-running race",
+    "tags": ["erc20", "approval"],
+    "body": "Changing a non-zero allowance directly to another non-zero value can let the spender use both the old and new amounts if it front-runs the change. The usual mitigation is to set the allowance to zero first, or use increase/decrease helpers where a token provides them.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://docs.openzeppelin.com/contracts/5.x/api/token/erc20"]
+  },
+  {
+    "noteId": "std-erc20-revoke",
+    "title": "Revoking an approval",
+    "tags": ["erc20", "approval", "revoke"],
+    "body": "An approval is revoked by calling approve(spender, 0) from the owner's address. Revoking costs gas and only affects that one token and spender pair. Allowances do not expire on their own, so old approvals to unused apps stay live.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://revoke.cash/learn/approvals/what-are-token-approvals"]
+  },
+  {
+    "noteId": "std-erc20-transferfrom",
+    "title": "transferFrom and who can move your tokens",
+    "tags": ["erc20", "approval"],
+    "body": "transferFrom(from, to, amount) succeeds for any caller that holds enough allowance from the from address. A drainer contract therefore needs only one prior approval; the theft transaction itself is sent by the attacker, not by the victim, and needs no further signature.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20"]
+  },
+  {
+    "noteId": "std-erc20-decimals",
+    "title": "Decimals and displayed amounts",
+    "tags": ["erc20", "decimals"],
+    "body": "Token amounts are integers; decimals tells wallets how many places to shift for display. A token can report misleading decimals, so the raw integer and the decimals value should both be shown when explaining an amount.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-20",
+      "https://ethereum.org/en/developers/docs/standards/tokens/erc-20/"
+    ]
+  },
+  {
+    "noteId": "std-erc2612-permit",
+    "title": "ERC-2612 permit: approvals by signature",
+    "tags": ["erc2612", "permit", "signature"],
+    "body": "permit lets an owner approve a spender by signing an EIP-712 message instead of sending an approve transaction. Anyone who holds the signature can submit it on-chain before the deadline. The user pays no gas and sees no transaction, only a signing prompt.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-2612", "https://eips.ethereum.org/EIPS/eip-712"]
+  },
+  {
+    "noteId": "scam-permit-phishing",
+    "title": "Permit phishing",
+    "tags": ["scam", "permit", "signature", "phishing"],
+    "body": "A phishing site asks for an off-chain signature that is really a permit (or Permit2) approval for the attacker. Because nothing is sent on-chain at signing time, the victim often believes nothing happened. The attacker later submits the permit and transfers the tokens in one go.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-2612", "https://github.com/Uniswap/permit2"]
+  },
+  {
+    "noteId": "std-permit2",
+    "title": "Uniswap Permit2",
+    "tags": ["permit2", "signature", "approval"],
+    "body": "Permit2 is a shared contract that users approve once per token; apps then get spending rights through signed messages (SignatureTransfer or AllowanceTransfer). A single malicious Permit2 signature can authorise transfers of any token already approved to Permit2, so its typed-data prompts deserve the same care as an approve.",
+    "sources": ["https://github.com/Uniswap/permit2"]
+  },
+  {
+    "noteId": "std-eip712",
+    "title": "EIP-712 typed structured data",
+    "tags": ["eip712", "signature"],
+    "body": "EIP-712 signatures show a domain (name, version, chainId, verifying contract) and a typed message. Checking that the verifying contract and chainId match what the user expects, and reading the spender and value fields, is the main defence against signing a hidden approval.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-712"]
+  },
+  {
+    "noteId": "std-eip191",
+    "title": "EIP-191 personal_sign messages",
+    "tags": ["eip191", "signature"],
+    "body": "personal_sign prefixes the message so it cannot be replayed as a transaction. Plain-text login messages are usually low risk, but a prompt that shows an opaque hex blob gives the user no way to know what they are approving and should be treated as unknown.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-191"]
+  },
+  {
+    "noteId": "scam-blind-signing",
+    "title": "Blind signing and opaque payloads",
+    "tags": ["scam", "signature"],
+    "body": "When a wallet cannot decode calldata or typed data, users are asked to sign something they cannot read. Unknown function selectors or unreadable typed data are not proof of fraud, but they remove the user's ability to verify intent, so the honest answer is that the effect is unknown.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-712", "https://ethereum.org/en/developers/docs/transactions/"]
+  },
+  {
+    "noteId": "std-erc721-basics",
+    "title": "ERC-721 NFT basics",
+    "tags": ["erc721", "standard"],
+    "body": "ERC-721 tokens are unique ids owned by addresses. Transfers use transferFrom or safeTransferFrom. Approvals can be per token (approve) or for the whole collection (setApprovalForAll).",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-721",
+      "https://ethereum.org/en/developers/docs/standards/tokens/erc-721/"
+    ]
+  },
+  {
+    "noteId": "std-erc721-approval-for-all",
+    "title": "setApprovalForAll: operator approvals",
+    "tags": ["erc721", "erc1155", "approval", "operator"],
+    "body": "setApprovalForAll(operator, true) lets the operator move every NFT the owner holds in that collection, including ones received later. Marketplaces need it, but granting it to an unknown address is equivalent to handing over the whole collection.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-721", "https://eips.ethereum.org/EIPS/eip-1155"]
+  },
+  {
+    "noteId": "scam-nft-drainer",
+    "title": "setApprovalForAll drainers",
+    "tags": ["scam", "erc721", "operator", "drainer"],
+    "body": "NFT drainer kits trick users into calling setApprovalForAll for an attacker-controlled operator, often disguised as a mint or a 'verify wallet' step. The attacker then sweeps the collection with transferFrom. An operator approval to a fresh, unverified contract or an EOA is a strong warning sign.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-721",
+      "https://revoke.cash/learn/approvals/what-are-token-approvals"
+    ]
+  },
+  {
+    "noteId": "std-erc1155-basics",
+    "title": "ERC-1155 multi-token basics",
+    "tags": ["erc1155", "standard"],
+    "body": "ERC-1155 holds many token ids, fungible or not, in one contract, with batch transfers. It has only collection-wide approvals via setApprovalForAll, so there is no per-token approve; any approval covers every id the owner holds.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-1155",
+      "https://ethereum.org/en/developers/docs/standards/tokens/erc-1155/"
+    ]
+  },
+  {
+    "noteId": "std-safe-transfer-hooks",
+    "title": "Receiver hooks on safe transfers",
+    "tags": ["erc721", "erc1155"],
+    "body": "safeTransferFrom calls onERC721Received or onERC1155Received on contract recipients. These callbacks run recipient code during a transfer, which is how some contracts react to deposits and also a place where reentrancy bugs appear.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-721", "https://eips.ethereum.org/EIPS/eip-1155"]
+  },
+  {
+    "noteId": "std-erc4337-basics",
+    "title": "ERC-4337 account abstraction basics",
+    "tags": ["erc4337", "standard", "smart-account"],
+    "body": "ERC-4337 smart accounts are contracts that validate UserOperations sent through an EntryPoint by bundlers. The account's own code decides what counts as a valid signature, which enables passkeys, session keys and spending limits.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-4337"]
+  },
+  {
+    "noteId": "std-erc4337-paymaster",
+    "title": "Paymasters in ERC-4337",
+    "tags": ["erc4337", "paymaster"],
+    "body": "A paymaster can sponsor gas for a UserOperation or accept payment in tokens. A UserOperation can still bundle token approvals or transfers in its callData, so 'gasless' does not mean 'harmless'.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-4337"]
+  },
+  {
+    "noteId": "scam-session-keys",
+    "title": "Over-broad session keys and modules",
+    "tags": ["erc4337", "scam", "smart-account"],
+    "body": "Smart accounts can grant session keys or install modules with wide permissions. A prompt to add a module or key with no spending limit or expiry gives that key the same power as the owner, and should be read like an unlimited approval.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-4337"]
+  },
+  {
+    "noteId": "std-eip7702",
+    "title": "EIP-7702 delegation for EOAs",
+    "tags": ["eip7702", "smart-account", "signature"],
+    "body": "EIP-7702 lets an externally owned account set its code to a delegate contract through a signed authorization. Signing a delegation to a malicious contract gives that contract control of the whole account, so delegation prompts are among the highest-risk signatures.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-7702"]
+  },
+  {
+    "noteId": "std-proxy-basics",
+    "title": "Upgradeable proxies",
+    "tags": ["proxy", "upgradeable"],
+    "body": "A proxy forwards calls to an implementation contract with delegatecall; an admin can swap the implementation. Users interact with a fixed address whose logic can change, so a contract that looks safe today may not be tomorrow.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-1967", "https://docs.openzeppelin.com/contracts/5.x/api/proxy"]
+  },
+  {
+    "noteId": "std-eip1967",
+    "title": "EIP-1967 storage slots",
+    "tags": ["proxy", "eip1967"],
+    "body": "EIP-1967 fixes the storage slots that hold a proxy's implementation and admin addresses, so tools can read them. If those slots are set, the address is an upgradeable proxy and its real behaviour lives in the implementation.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-1967"]
+  },
+  {
+    "noteId": "std-uups",
+    "title": "UUPS vs transparent proxies",
+    "tags": ["proxy", "upgradeable"],
+    "body": "In transparent proxies the upgrade logic sits in the proxy; in UUPS (EIP-1822) it sits in the implementation. Either way, whoever controls upgrades can replace the code, so the upgrade key's owner (multisig, timelock or single EOA) matters for risk.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-1822", "https://docs.openzeppelin.com/contracts/5.x/api/proxy"]
+  },
+  {
+    "noteId": "scam-malicious-upgrade",
+    "title": "Approvals to upgradeable spenders",
+    "tags": ["proxy", "approval", "scam"],
+    "body": "An unlimited approval to an upgradeable contract trusts every future version of that contract. If the admin key is stolen or the team turns malicious, an upgrade can add a function that drains all approved tokens without any new action by users.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-1967",
+      "https://revoke.cash/learn/approvals/what-are-token-approvals"
+    ]
+  },
+  {
+    "noteId": "std-timelock",
+    "title": "Timelocks and multisigs on admin keys",
+    "tags": ["proxy", "governance"],
+    "body": "A timelock delays admin actions so users can react, and a multisig requires several keys. Upgrades controlled by a single EOA with no delay are higher risk than those behind a timelock or multisig.",
+    "sources": ["https://docs.openzeppelin.com/contracts/5.x/api/governance"]
+  },
+  {
+    "noteId": "scam-address-poisoning",
+    "title": "Address poisoning",
+    "tags": ["scam", "address", "poisoning"],
+    "body": "Attackers send zero-value or dust transfers from addresses that share the first and last characters of an address the victim uses. The fake entry appears in history, and a victim who copies from history sends funds to the lookalike. Comparing the full address, not just the ends, prevents it.",
+    "sources": ["https://ethereum.org/en/security/", "https://eips.ethereum.org/EIPS/eip-55"]
+  },
+  {
+    "noteId": "scam-zero-value-transfer",
+    "title": "Zero-value transferFrom spam",
+    "tags": ["scam", "poisoning", "erc20"],
+    "body": "Some tokens allow transferFrom with amount 0 without any allowance, so attackers can make it look as if the victim sent tokens to a lookalike address. A zero-value transfer the user did not send is a poisoning signal, not a real payment.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20"]
+  },
+  {
+    "noteId": "scam-fake-tokens",
+    "title": "Fake tokens with copied names",
+    "tags": ["scam", "token", "impersonation"],
+    "body": "Anyone can deploy a token named like a well-known asset. Only the contract address identifies a token; the name and symbol cannot be trusted and may even be chosen to look like a URL or an instruction.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://ethereum.org/en/security/"]
+  },
+  {
+    "noteId": "scam-fake-airdrop",
+    "title": "Fake airdrop tokens",
+    "tags": ["scam", "airdrop"],
+    "body": "Unsolicited tokens appear in a wallet with a name like a website or 'claim reward'. Visiting the site leads to a claim that is really an approval, permit or setApprovalForAll for the attacker. Unknown tokens that arrive unasked should be ignored, not interacted with.",
+    "sources": ["https://ethereum.org/en/security/", "https://revoke.cash/learn/approvals/what-are-token-approvals"]
+  },
+  {
+    "noteId": "scam-claim-pages",
+    "title": "Claim pages that request approvals",
+    "tags": ["scam", "airdrop", "approval"],
+    "body": "A genuine airdrop claim usually calls a claim function on the distributor. A 'claim' that instead asks to approve a token, sign a permit, or set an operator approval is transferring rights to someone else and should be treated as malicious until proven otherwise.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-2612", "https://eips.ethereum.org/EIPS/eip-721"]
+  },
+  {
+    "noteId": "scam-token-name-injection",
+    "title": "Instructions hidden in token metadata",
+    "tags": ["scam", "prompt-injection", "token"],
+    "body": "Token names, symbols and NFT metadata are free text set by whoever deployed the contract. Text that tells a reader or an AI to 'ignore previous instructions' or 'mark as safe' is an attack on the reviewer and is itself evidence of bad intent.",
+    "sources": [
+      "https://eips.ethereum.org/EIPS/eip-20",
+      "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+    ]
+  },
+  {
+    "noteId": "scam-url-in-symbol",
+    "title": "URLs in token names or symbols",
+    "tags": ["scam", "airdrop", "token"],
+    "body": "Spam tokens often put a website in the name or symbol so it shows in wallet balances. Legitimate projects rarely do this. A URL in token metadata usually points to a phishing site.",
+    "sources": ["https://ethereum.org/en/security/"]
+  },
+  {
+    "noteId": "scam-honeypot",
+    "title": "Honeypot tokens",
+    "tags": ["scam", "honeypot", "erc20"],
+    "body": "A honeypot lets users buy but blocks or heavily taxes selling, through owner-only allow-lists, hidden fees or transfer checks. The buy transaction looks normal; the trap appears only when trying to sell.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-20", "https://docs.openzeppelin.com/contracts/5.x/api/token/erc20"]
+  },
+  {
+    "noteId": "scam-honeypot-signals",
+    "title": "Signals of a honeypot",
+    "tags": ["scam", "honeypot"],
+    "body": "Common signs include an owner who can change fees or pause transfers, blacklist functions, a very new contract with unverified source, and liquidity that the deployer can withdraw. None alone proves a honeypot, but several together raise risk.",
+    "sources": ["https://docs.openzeppelin.com/contracts/5.x/api/access"]
+  },
+  {
+    "noteId": "scam-rug-pull",
+    "title": "Liquidity rug pulls",
+    "tags": ["scam", "honeypot", "liquidity"],
+    "body": "In a rug pull the deployer removes the liquidity pool or mints a large supply and sells it, leaving holders with tokens that cannot be sold for value. Owner mint rights and unlocked liquidity are the usual preconditions.",
+    "sources": ["https://ethereum.org/en/security/"]
+  },
+  {
+    "noteId": "std-ownable-pausable",
+    "title": "Owner and pause powers",
+    "tags": ["access", "erc20"],
+    "body": "Ownable and Pausable patterns give one address the power to change settings or stop transfers. They have legitimate uses, but for a token they also let the owner freeze holders, so they should be mentioned when assessing a token.",
+    "sources": [
+      "https://docs.openzeppelin.com/contracts/5.x/api/access",
+      "https://docs.openzeppelin.com/contracts/5.x/api/utils"
+    ]
+  },
+  {
+    "noteId": "std-calldata-selector",
+    "title": "Function selectors and calldata",
+    "tags": ["calldata", "decoding"],
+    "body": "The first 4 bytes of calldata select the function (the hash of its signature); the rest are ABI-encoded arguments. 0x095ea7b3 is approve, 0xa9059cbb is transfer, 0x23b872dd is transferFrom and 0xa22cb465 is setApprovalForAll.",
+    "sources": ["https://docs.soliditylang.org/en/latest/abi-spec.html"]
+  },
+  {
+    "noteId": "std-selector-collisions",
+    "title": "Selector collisions and fake function names",
+    "tags": ["calldata", "decoding", "scam"],
+    "body": "Selectors are only 4 bytes, so different signatures can share one. A contract can expose a function whose name looks harmless (for example 'claim') while its selector matches something else, so decoding should use the target's known ABI rather than a name guess.",
+    "sources": ["https://docs.soliditylang.org/en/latest/abi-spec.html"]
+  },
+  {
+    "noteId": "std-native-transfer",
+    "title": "Plain native-token transfers",
+    "tags": ["native", "transfer"],
+    "body": "A transaction with empty calldata to an address that has no code simply sends ETH (or the chain's native token). The main risks are sending to the wrong or a poisoned address; there is no approval involved.",
+    "sources": ["https://ethereum.org/en/developers/docs/transactions/"]
+  },
+  {
+    "noteId": "std-value-to-contract",
+    "title": "Sending value to a contract",
+    "tags": ["native", "contract"],
+    "body": "If the target has code, a transfer with value runs that contract's receive or fallback logic. The effect depends entirely on that code, so a value transfer to an unverified contract has an unknown outcome.",
+    "sources": ["https://docs.soliditylang.org/en/latest/contracts.html#receive-ether-function"]
+  },
+  {
+    "noteId": "std-multicall",
+    "title": "Multicall and batched actions",
+    "tags": ["multicall", "calldata"],
+    "body": "Multicall bundles several calls into one transaction. A batch can hide an approval or transfer among harmless-looking steps, so every inner call should be decoded before judging the whole.",
+    "sources": ["https://docs.openzeppelin.com/contracts/5.x/api/utils#Multicall"]
+  },
+  {
+    "noteId": "std-eoa-vs-contract",
+    "title": "EOA vs contract addresses",
+    "tags": ["address", "contract"],
+    "body": "An externally owned account has no code and is controlled by a private key; a contract has code. An approval or operator grant to an EOA means a person, not audited code, can move the tokens, which is unusual for legitimate apps.",
+    "sources": ["https://ethereum.org/en/developers/docs/accounts/"]
+  },
+  {
+    "noteId": "std-testnets",
+    "title": "Testnets and chain ids",
+    "tags": ["network", "testnet"],
+    "body": "Sepolia (11155111) and Polygon Amoy (80002) are test networks whose tokens have no value. Signing requests should name the chain; a mismatch between the dapp's claimed chain and the request's chainId is a warning sign.",
+    "sources": ["https://ethereum.org/en/developers/docs/networks/", "https://chainlist.org/"]
+  },
+  {
+    "noteId": "std-eip155",
+    "title": "EIP-155 replay protection",
+    "tags": ["network", "signature"],
+    "body": "EIP-155 puts the chain id into transaction signatures so a transaction signed for one chain cannot be replayed on another. Typed data uses the chainId in its EIP-712 domain for the same purpose.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-155", "https://eips.ethereum.org/EIPS/eip-712"]
+  },
+  {
+    "noteId": "scam-wrong-chain",
+    "title": "Wrong-network prompts",
+    "tags": ["scam", "network"],
+    "body": "Phishing sites sometimes ask users to switch to or add a network with a custom RPC. A malicious RPC can show false balances or simulation results. Adding networks only from trusted lists reduces the risk.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-3085", "https://chainlist.org/"]
+  },
+  {
+    "noteId": "std-simulation-limits",
+    "title": "Limits of transaction simulation",
+    "tags": ["simulation"],
+    "body": "Simulating a transaction shows its effect against the current state only. State can change before inclusion, and contracts can behave differently when they detect simulation. A clean simulation lowers risk but is not proof of safety.",
+    "sources": ["https://ethereum.org/en/developers/docs/transactions/"]
+  },
+  {
+    "noteId": "std-gas-fees",
+    "title": "Gas, fees and failed transactions",
+    "tags": ["gas"],
+    "body": "Users pay gas even when a transaction reverts. A very high gas limit is not itself malicious but deserves a note, since it raises the maximum fee the user agrees to.",
+    "sources": ["https://eips.ethereum.org/EIPS/eip-1559", "https://ethereum.org/en/developers/docs/gas/"]
+  },
+  {
+    "noteId": "practice-least-privilege",
+    "title": "Practice: approve only what you need",
+    "tags": ["practice", "approval"],
+    "body": "Safer habits: approve exact amounts, prefer per-token over collection-wide approvals, revoke approvals to apps you no longer use, and read the spender address, not just the dapp's name.",
+    "sources": ["https://revoke.cash/learn/approvals/what-are-token-approvals"]
+  },
+  {
+    "noteId": "practice-verify-contracts",
+    "title": "Practice: verify the contract you interact with",
+    "tags": ["practice", "contract"],
+    "body": "Check that the target address matches the project's official docs, that its source is verified on a block explorer, and whether it is a proxy. Newly deployed, unverified contracts receiving approvals are a common drainer pattern.",
+    "sources": ["https://ethereum.org/en/security/", "https://docs.sourcify.dev/"]
+  },
+  {
+    "noteId": "practice-unknown",
+    "title": "Practice: say 'unknown' when evidence is missing",
+    "tags": ["practice", "unknown"],
+    "body": "If calldata cannot be decoded, the contract is unverified, or data could not be fetched, the honest assessment is that the effect is unknown. Guessing a reassuring explanation is worse than saying so.",
+    "sources": ["https://ethereum.org/en/security/"]
+  }
+]

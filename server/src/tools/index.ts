@@ -4,6 +4,7 @@ import { SUPPORTED_CHAIN_IDS, type SupportedChainId } from "../chain/networks.js
 import type { GuardedChainReader } from "../chain/guardedReader.js";
 import { KNOWN_ABIS, MAX_UINT256 } from "./abis.js";
 import { untrustedText } from "./untrusted.js";
+import type { Retriever } from "../rag/types.js";
 
 const chainId = z
   .number()
@@ -18,6 +19,7 @@ const hex = z
 
 export interface ToolContext {
   chain: GuardedChainReader;
+  retriever: Retriever;
 }
 
 export interface ToolOutput {
@@ -146,6 +148,29 @@ export const TOOLS = [
         cached: info.cached && meta.cached,
         notice: info.notice ?? meta.notice,
       };
+    },
+  }),
+  define({
+    name: "retrieveNotes",
+    description:
+      "Search WalletLens's curated notes on scam patterns and token standards. Cite returned noteIds as [noteId].",
+    args: z
+      .object({
+        query: z.string().trim().min(3).max(300),
+        k: z.number().int().min(1).max(5).default(3),
+        tags: z.array(z.string().max(40)).max(5).optional(),
+      })
+      .strict(),
+    parameters: props(
+      {
+        query: { type: "string", description: "what to look up, e.g. 'unlimited ERC-20 approval'" },
+        k: { type: "integer", description: "number of notes, 1-5 (default 3)" },
+      },
+      ["query"],
+    ),
+    async run({ query, k, tags }, { retriever }) {
+      const r = await retriever.search(query, k, tags);
+      return { data: { backend: r.backend, notes: r.notes }, notice: r.notice };
     },
   }),
 ];

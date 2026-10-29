@@ -3,13 +3,17 @@ import { fileURLToPath } from "node:url";
 import { Types } from "mongoose";
 import { FixtureChainReader } from "../src/chain/fixtureReader.js";
 import { GuardedChainReader } from "../src/chain/guardedReader.js";
+import { LocalRetriever } from "../src/rag/retrievers.js";
 import { ToolCall } from "../src/models/toolCall.js";
 import { decode } from "../src/tools/index.js";
 import { runTool } from "../src/tools/runner.js";
 import { untrustedText } from "../src/tools/untrusted.js";
 
 const fixtures = FixtureChainReader.fromFile(fileURLToPath(new URL("../fixtures/chain/sepolia.json", import.meta.url)));
-const ctx = { chain: new GuardedChainReader(null, fixtures, { perMinute: 1, perDay: 1 }, 60) };
+const ctx = {
+  chain: new GuardedChainReader(null, fixtures, { perMinute: 1, perDay: 1 }, 60),
+  retriever: new LocalRetriever(),
+};
 const SEPOLIA = 11155111;
 const TOKEN = "0x1111111111111111111111111111111111111111";
 const BAD_TOKEN = "0x5555555555555555555555555555555555555555";

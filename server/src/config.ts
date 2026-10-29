@@ -17,6 +17,10 @@ export interface AppConfig {
   groqModel?: string;
   geminiApiKey?: string;
   geminiModel?: string;
+  geminiEmbedModel?: string;
+  /** true only when MONGODB_URI is an Atlas cluster with the vector index from knowledge/atlas-vector-index.json. */
+  atlasVectorSearch: boolean;
+  vectorIndex: string;
 }
 
 const int = (v: string | undefined, d: number) => {
@@ -50,5 +54,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     groqModel: env.GROQ_MODEL || undefined,
     geminiApiKey: env.GEMINI_API_KEY || undefined,
     geminiModel: env.GEMINI_MODEL || undefined,
+    geminiEmbedModel: env.GEMINI_EMBED_MODEL || undefined,
+    atlasVectorSearch: env.ATLAS_VECTOR_SEARCH === "true",
+    vectorIndex: env.ATLAS_VECTOR_INDEX || "knowledge_vector_index",
   };
 }

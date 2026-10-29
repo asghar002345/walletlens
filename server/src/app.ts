@@ -13,11 +13,17 @@ import { GuardedChainReader } from "./chain/guardedReader.js";
 import type { ChainReader } from "./chain/types.js";
 import type { LlmProvider } from "./llm/types.js";
 import { selectProvider } from "./llm/select.js";
+import { selectRetriever } from "./rag/select.js";
+import type { Retriever } from "./rag/types.js";
+import { knowledgeRouter } from "./routes/knowledge.js";
 import type { AppConfig } from "./config.js";
 
 const FIXTURES = fileURLToPath(new URL("../fixtures/chain/sepolia.json", import.meta.url));
 
-export function createApp(config: AppConfig, deps: { liveChain?: ChainReader | null; llm?: LlmProvider } = {}) {
+export function createApp(
+  config: AppConfig,
+  deps: { liveChain?: ChainReader | null; llm?: LlmProvider; retriever?: Retriever } = {},
+) {
   const app = express();
   app.set("trust proxy", 1); // behind Render/Vercel proxies, so req.ip is the client IP
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
@@ -46,7 +52,11 @@ export function createApp(config: AppConfig, deps: { liveChain?: ChainReader | n
     res.json({ ok: true, db: mongoose.connection.readyState === 1 ? "up" : "down", mockMode: config.mockMode });
   });
   app.use("/api/auth", authRouter(config));
-  app.use("/api/analyses", analysesRouter(config, chain, deps.llm ?? selectProvider(config)));
+  app.use("/api/knowledge", knowledgeRouter());
+  app.use(
+    "/api/analyses",
+    analysesRouter(config, chain, deps.llm ?? selectProvider(config), deps.retriever ?? selectRetriever(config)),
+  );
 
   app.use(notFound);
   app.use(errorHandler);

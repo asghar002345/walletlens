@@ -4,6 +4,7 @@ import { Analysis } from "../models/analysis.js";
 import { ToolCall } from "../models/toolCall.js";
 import { runAgent } from "../llm/agent.js";
 import type { LlmProvider } from "../llm/types.js";
+import type { Retriever } from "../rag/types.js";
 import { createAnalysisSchema } from "../validation.js";
 import { HttpError } from "../middleware/errors.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -11,7 +12,7 @@ import type { GuardedChainReader } from "../chain/guardedReader.js";
 import type { SupportedChainId } from "../chain/networks.js";
 import type { AppConfig } from "../config.js";
 
-export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm: LlmProvider) {
+export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm: LlmProvider, retriever: Retriever) {
   const router = Router();
   router.use(requireAuth(config.jwtSecret));
 
@@ -54,7 +55,7 @@ export function analysesRouter(config: AppConfig, chain: GuardedChainReader, llm
 
     // Run the read-only tool loop. Failures are recorded on the analysis instead of failing the request.
     try {
-      const run = await runAgent(analysis._id, input, llm, { chain });
+      const run = await runAgent(analysis._id, input, llm, { chain, retriever });
       analysis.trace = run;
       analysis.notices = [...new Set([...analysis.notices, ...run.notices])];
       if (run.provider === "mock" && mode === "live") analysis.notices.push("AI step ran on the offline mock model.");
