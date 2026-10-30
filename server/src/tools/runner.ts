@@ -37,6 +37,7 @@ export async function runTool(
           : "Tool failed";
     result = { tool: name, ok: false, error };
   }
+  console.info(JSON.stringify({ event: "tool_call", tool: name, ok: result.ok, ms: Date.now() - started }));
   await ToolCall.create({
     analysisId,
     tool: name,

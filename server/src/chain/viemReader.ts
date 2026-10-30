@@ -17,7 +17,8 @@ export class ViemChainReader implements ChainReader {
     if (!c) {
       c = createPublicClient({
         chain: SUPPORTED_CHAINS[chainId],
-        transport: http(this.rpcUrls[chainId]),
+        // Short timeouts so a slow public RPC cannot use up the serverless time budget.
+        transport: http(this.rpcUrls[chainId], { timeout: 5_000, retryCount: 1 }),
       }) as PublicClient;
       this.clients.set(chainId, c);
     }

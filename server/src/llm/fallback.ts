@@ -47,9 +47,21 @@ export class FallbackProvider implements LlmProvider {
   async chat(messages: ChatMessage[], tools: ToolDeclaration[]): Promise<ChatResult> {
     for (;;) {
       const current = this.providers[this.index];
+      const started = Date.now();
       try {
-        return { ...(await current.chat(messages, tools)), provider: current.name };
+        const res = { ...(await current.chat(messages, tools)), provider: current.name };
+        console.info(JSON.stringify({ event: "llm_call", provider: current.name, ok: true, ms: Date.now() - started }));
+        return res;
       } catch (err) {
+        console.info(
+          JSON.stringify({
+            event: "llm_call",
+            provider: current.name,
+            ok: false,
+            reason: describe(err),
+            ms: Date.now() - started,
+          }),
+        );
         const next = this.providers[this.index + 1];
         if (!next) throw err;
         this.events.push({ from: current.name, to: next.name, reason: describe(err), at: new Date().toISOString() });
