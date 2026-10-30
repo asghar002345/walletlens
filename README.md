@@ -13,8 +13,8 @@ tool result or a note that really exists, and "don't know" is an allowed answer.
 built around AI-engineering concerns: tool use, RAG, structured outputs, prompt-injection handling, evals with a CI
 gate, and provider fallback. It runs fully offline by default and costs nothing to run live.
 
-> **Status:** all 8 planned milestones are built and the project runs locally. It is not deployed. Deploy config is
-> included (Render + Vercel) but has not been used. All quoted numbers come from **mock mode**.
+> **Status:** all 8 planned milestones are built. A demo runs on Vercel Hobby in mock mode with an in-memory database
+> (see [Deploy](#deploy-vercel-hobby-demo-mode)). All quoted numbers come from **mock mode**.
 
 **Safety:** read-only, testnet-only, and the app never signs. See [Security model](#security-model).
 **Cost:** $0. Mock mode needs no keys, and live mode uses only free tiers that need no card. See
@@ -286,27 +286,28 @@ host's environment settings. Never commit them.
       is offered.
 - [ ] Optional: tune the caps in `.env.example` (`*_PER_MINUTE`, `*_PER_DAY`, `API_RATE_*`, `EVAL_*`).
 
-## Deploy (config only, not deployed)
+## Deploy (Vercel Hobby, demo mode)
 
-The repo has config files for both hosts. Nothing has been deployed, and no accounts or projects exist.
+The whole app runs on one Vercel Hobby project from the repo root, configured by the root `vercel.json`:
 
-- **API on Render (free plan):** `render.yaml` is a Blueprint for one Node web service. It installs from the root
-  lockfile (`npm ci --include=dev && npm run build -w server`), starts with `npm start -w server`, and sets the health check `/api/health` and `NODE_ENV=production`.
-  It defaults to `MOCK_MODE=true` and generates `JWT_SECRET`. Secrets are `sync: false`, so Render asks for them in
-  the dashboard. Set `CLIENT_ORIGIN` to the Vercel URL.
-- **Client on Vercel (Hobby):** project root `client` (Vercel installs from the root workspace lockfile), framework Vite, build `npm run build`, output `dist`.
-  `client/vercel.json` rewrites `/api/*` to the Render URL, so the auth cookie stays first-party, and sends every
-  other path to `index.html` for client-side routing. Replace the placeholder `walletlens-api.onrender.com` with the
-  real service URL. Set `VITE_WALLETCONNECT_PROJECT_ID` in the Vercel project settings. With the rewrite there
-  are two proxies in front of the API, so set `TRUST_PROXY_HOPS=2` on Render to keep per-IP rate limits accurate.
+- **Client:** `npm run build` builds the server and the Vite client; Vercel serves `client/dist`, and every non-`/api`
+  path falls back to `index.html` for client-side routing.
+- **API:** `api/index.js` is a Vercel serverless function that wraps the Express app (`server/src/serverless.ts`).
+  `/api/*` is rewritten to it, so the API is on the same domain and the auth cookie stays first-party. Rate limits,
+  the testnet-only checks and the never-sign guard are unchanged.
+- **Demo data:** with no `MONGODB_URI`, each function instance starts an in-memory MongoDB in `/tmp` and seeds the
+  knowledge notes. Nothing persists: accounts and analyses vanish when the instance is recycled. Set `MONGODB_URI`
+  (Atlas M0) to persist.
+- **Mode:** `MOCK_MODE` defaults to `true` in the serverless entry, so no keys are needed and no external calls are made.
+  `JWT_SECRET` must be set to a random value of at least 16 characters.
 
 | Where  | Variable                                                                                  |
 | ------ | ----------------------------------------------------------------------------------------- |
-| Render | `NODE_ENV`, `MOCK_MODE`, `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN`, `TRUST_PROXY_HOPS` |
-| Render | `GROQ_API_KEY`, `GROQ_MODEL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBED_MODEL`      |
-| Render | `SEPOLIA_RPC_URL`, `AMOY_RPC_URL`, `ATLAS_VECTOR_SEARCH`, `ATLAS_VECTOR_INDEX`            |
-| Render | caps: `API_RATE_*`, `RPC_*`, `GROQ_*`, `GEMINI_*`, `GEMINI_EMBED_*`, `TX_CACHE_TTL_SEC`   |
+| Vercel | `JWT_SECRET`, `MOCK_MODE`, `NODE_ENV`, `TRUST_PROXY_HOPS` (1), optional `MONGODB_URI`     |
+| Vercel | live mode only: `GROQ_*`, `GEMINI_*`, `SEPOLIA_RPC_URL`, `AMOY_RPC_URL`, `ATLAS_VECTOR_*` |
 | Vercel | `VITE_WALLETCONNECT_PROJECT_ID`                                                           |
+
+`render.yaml` is kept as an alternative config for a separate Render API service; it is not used by the demo.
 
 ## Scripts
 
@@ -340,17 +341,16 @@ All `/api/analyses` routes need the session cookie. Errors are always `{ error: 
 
 WalletLens costs **$0**. Nothing in it needs a card:
 
-| Service                   | Used for                     | Plan             |
-| ------------------------- | ---------------------------- | ---------------- |
-| MongoDB Atlas             | database + Vector Search     | M0 free          |
-| Groq                      | primary LLM                  | free tier        |
-| Google AI Studio (Gemini) | fallback LLM + embeddings    | free tier        |
-| Reown (WalletConnect)     | WalletConnect project id     | free             |
-| Public testnet RPCs       | Sepolia / Amoy reads         | free             |
-| Render                    | API hosting (config only)    | Free web service |
-| Vercel                    | client hosting (config only) | Hobby            |
+| Service                   | Used for                  | Plan      |
+| ------------------------- | ------------------------- | --------- |
+| MongoDB Atlas             | database + Vector Search  | M0 free   |
+| Groq                      | primary LLM               | free tier |
+| Google AI Studio (Gemini) | fallback LLM + embeddings | free tier |
+| Reown (WalletConnect)     | WalletConnect project id  | free      |
+| Public testnet RPCs       | Sepolia / Amoy reads      | free      |
+| Vercel                    | client + API (serverless) | Hobby     |
 
-The free Render plan sleeps when idle, so the first request after a pause is slow. Mock mode makes no external calls
+On Vercel the first request to a cold function starts the in-memory database, so it is slow. Mock mode makes no external calls
 at all.
 
 ### Guards
