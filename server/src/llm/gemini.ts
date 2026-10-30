@@ -12,7 +12,7 @@ export class GeminiProvider implements LlmProvider {
   readonly name = "gemini" as const;
   constructor(
     private apiKey: string,
-    private model = "gemini-2.5-flash",
+    private model = "gemini-3.5-flash-lite",
     private fetchFn: FetchLike = (u, i) => fetch(u, i),
   ) {}
 
@@ -21,7 +21,7 @@ export class GeminiProvider implements LlmProvider {
       .filter((m) => m.role === "system")
       .map((m) => m.content)
       .join("\n");
-    const contents = messages.filter((m) => m.role !== "system").map(toGemini);
+    const contents = mergeToolTurns(messages.filter((m) => m.role !== "system").map(toGemini));
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
     const res = await this.fetchFn(url, {
       method: "POST",
@@ -44,16 +44,33 @@ export class GeminiProvider implements LlmProvider {
     });
     if (!res.ok) throw new ProviderError("gemini", res.status, `HTTP ${res.status}`);
     const body = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string; functionCall?: { name: string; args: unknown } }[] } }[];
+      candidates?: {
+        content?: {
+          parts?: {
+            text?: string;
+            thought?: boolean;
+            thoughtSignature?: string;
+            functionCall?: { name: string; args: unknown };
+          }[];
+        };
+      }[];
       usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
     };
     const parts = body.candidates?.[0]?.content?.parts ?? [];
-    const text = parts.map((p) => p.text ?? "").join("");
+    const text = parts
+      .filter((p) => !p.thought)
+      .map((p) => p.text ?? "")
+      .join("");
     return {
       content: text || null,
       toolCalls: parts
         .filter((p) => p.functionCall)
-        .map((p, i) => ({ id: `gemini-${i}`, name: p.functionCall!.name, args: p.functionCall!.args })),
+        .map((p, i) => ({
+          id: `gemini-${i}`,
+          name: p.functionCall!.name,
+          args: p.functionCall!.args,
+          ...(p.thoughtSignature ? { signature: p.thoughtSignature } : {}),
+        })),
       usage: {
         inputTokens: body.usageMetadata?.promptTokenCount ?? 0,
         outputTokens: body.usageMetadata?.candidatesTokenCount ?? 0,
@@ -71,10 +88,27 @@ function toGemini(m: Exclude<ChatMessage, { role: "system" }>) {
       role: "model",
       parts: [
         ...(m.content ? [{ text: m.content }] : []),
-        ...(m.toolCalls ?? []).map((c) => ({ functionCall: { name: c.name, args: c.args } })),
+        ...(m.toolCalls ?? []).map((c) => ({
+          functionCall: { name: c.name, args: c.args },
+          ...(c.signature ? { thoughtSignature: c.signature } : {}),
+        })),
       ],
     };
   return { role: "user", parts: [{ text: m.content }] };
+}
+
+type GeminiContent = { role: string; parts: Record<string, unknown>[] };
+
+/** Gemini expects all function responses for one model turn in a single user turn. */
+function mergeToolTurns(contents: GeminiContent[]) {
+  const out: GeminiContent[] = [];
+  for (const c of contents) {
+    const prev = out[out.length - 1];
+    const isResp = (x: GeminiContent) => x.parts.every((p) => "functionResponse" in p);
+    if (prev && prev.role === "user" && c.role === "user" && isResp(prev) && isResp(c)) prev.parts.push(...c.parts);
+    else out.push({ role: c.role, parts: [...c.parts] });
+  }
+  return out;
 }
 
 /** Gemini's schema subset rejects additionalProperties. */

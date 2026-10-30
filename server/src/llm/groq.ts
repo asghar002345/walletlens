@@ -12,7 +12,7 @@ export class GroqProvider implements LlmProvider {
   readonly name = "groq" as const;
   constructor(
     private apiKey: string,
-    private model = "llama-3.3-70b-versatile",
+    private model = "openai/gpt-oss-20b",
     private fetchFn: FetchLike = (u, i) => fetch(u, i),
   ) {}
 

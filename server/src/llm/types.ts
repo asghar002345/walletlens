@@ -2,6 +2,8 @@ export interface ToolCallRequest {
   id: string;
   name: string;
   args: unknown;
+  /** Gemini 3 thought signature; must be sent back with the function call on the next turn. */
+  signature?: string;
 }
 
 export type ChatMessage =
