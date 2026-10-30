@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { createMemoryModel, isMemoryStore } from "./memoryStore.js";
 
 /** Audit log: every tool call the LLM makes (and its Zod-validated args) is stored. */
 const toolCallSchema = new Schema(
@@ -15,4 +16,8 @@ const toolCallSchema = new Schema(
   { timestamps: true },
 );
 
-export const ToolCall = model("ToolCall", toolCallSchema);
+const mongooseToolCall = model("ToolCall", toolCallSchema);
+/** Real Mongoose model, or the in-process demo store when WALLETLENS_STORE=memory (Vercel demo). */
+export const ToolCall = isMemoryStore()
+  ? (createMemoryModel({ timestamps: true, defaults: () => ({ cached: false }) }) as unknown as typeof mongooseToolCall)
+  : mongooseToolCall;

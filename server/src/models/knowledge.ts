@@ -1,4 +1,5 @@
 import { Schema, model, type InferSchemaType } from "mongoose";
+import { createMemoryModel, isMemoryStore } from "./memoryStore.js";
 
 /** Curated notes used for retrieval. `embedding` is only filled in live mode (Gemini) for Atlas Vector Search. */
 const knowledgeSchema = new Schema(
@@ -17,4 +18,12 @@ const knowledgeSchema = new Schema(
 );
 
 export type KnowledgeDoc = InferSchemaType<typeof knowledgeSchema>;
-export const Knowledge = model("Knowledge", knowledgeSchema, "knowledge");
+const mongooseKnowledge = model("Knowledge", knowledgeSchema, "knowledge");
+/** Real Mongoose model, or the in-process demo store when WALLETLENS_STORE=memory (Vercel demo). */
+export const Knowledge = isMemoryStore()
+  ? (createMemoryModel({
+      timestamps: true,
+      defaults: () => ({ tags: [], sources: [] }),
+      hidden: ["embedding"],
+    }) as unknown as typeof mongooseKnowledge)
+  : mongooseKnowledge;

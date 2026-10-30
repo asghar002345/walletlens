@@ -295,9 +295,10 @@ The whole app runs on one Vercel Hobby project from the repo root, configured by
 - **API:** `api/index.js` is a Vercel serverless function that wraps the Express app (`server/src/serverless.ts`).
   `/api/*` is rewritten to it, so the API is on the same domain and the auth cookie stays first-party. Rate limits,
   the testnet-only checks and the never-sign guard are unchanged.
-- **Demo data:** with no `MONGODB_URI`, each function instance starts an in-memory MongoDB in `/tmp` and seeds the
-  knowledge notes. Nothing persists: accounts and analyses vanish when the instance is recycled. Set `MONGODB_URI`
-  (Atlas M0) to persist.
+- **Demo data:** with no `MONGODB_URI`, the serverless entry sets `WALLETLENS_STORE=memory` and the models use a plain
+  in-process store (`server/src/models/memoryStore.ts`) instead of MongoDB, then seed the knowledge notes. Nothing
+  persists: accounts and analyses vanish when the instance is recycled, and separate instances do not share data. Set
+  `MONGODB_URI` (Atlas M0) to persist.
 - **Mode:** `MOCK_MODE` defaults to `true` in the serverless entry, so no keys are needed and no external calls are made.
   `JWT_SECRET` must be set to a random value of at least 16 characters.
 
@@ -350,7 +351,7 @@ WalletLens costs **$0**. Nothing in it needs a card:
 | Public testnet RPCs       | Sepolia / Amoy reads      | free      |
 | Vercel                    | client + API (serverless) | Hobby     |
 
-On Vercel the first request to a cold function starts the in-memory database, so it is slow. Mock mode makes no external calls
+On Vercel the first request to a cold function seeds the in-memory store, so it is a little slower. Mock mode makes no external calls
 at all.
 
 ### Guards

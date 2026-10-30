@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { createMemoryModel, isMemoryStore, idTransform } from "./memoryStore.js";
 
 const userSchema = new Schema(
   {
@@ -20,4 +21,16 @@ const userSchema = new Schema(
   },
 );
 
-export const User = model("User", userSchema);
+const mongooseUser = model("User", userSchema);
+/** Real Mongoose model, or the in-process demo store when WALLETLENS_STORE=memory (Vercel demo). */
+export const User = isMemoryStore()
+  ? (createMemoryModel({
+      timestamps: true,
+      hidden: ["passwordHash"],
+      toJSON: (ret) => {
+        const out = idTransform(ret);
+        delete out.passwordHash;
+        return out;
+      },
+    }) as unknown as typeof mongooseUser)
+  : mongooseUser;

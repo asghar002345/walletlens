@@ -1,4 +1,5 @@
 import { Schema, model, type InferSchemaType } from "mongoose";
+import { createMemoryModel, isMemoryStore, idTransform } from "./memoryStore.js";
 
 export const INPUT_KINDS = ["tx", "address", "signRequest"] as const;
 
@@ -34,4 +35,12 @@ const analysisSchema = new Schema(
 );
 
 export type AnalysisDoc = InferSchemaType<typeof analysisSchema>;
-export const Analysis = model("Analysis", analysisSchema);
+const mongooseAnalysis = model("Analysis", analysisSchema);
+/** Real Mongoose model, or the in-process demo store when WALLETLENS_STORE=memory (Vercel demo). */
+export const Analysis = isMemoryStore()
+  ? (createMemoryModel({
+      timestamps: true,
+      defaults: () => ({ chainData: null, status: "pending", verdict: null, trace: null, notices: [] }),
+      toJSON: idTransform,
+    }) as unknown as typeof mongooseAnalysis)
+  : mongooseAnalysis;

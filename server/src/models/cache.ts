@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { createMemoryModel, isMemoryStore } from "./memoryStore.js";
 
 /** Generic key/value cache (tx lookups now, embeddings later). Mongo TTL index expires entries. */
 const cacheSchema = new Schema({
@@ -8,4 +9,8 @@ const cacheSchema = new Schema({
 });
 cacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export const CacheEntry = model("CacheEntry", cacheSchema);
+const mongooseCacheEntry = model("CacheEntry", cacheSchema);
+/** Real Mongoose model, or the in-process demo store when WALLETLENS_STORE=memory (Vercel demo). */
+export const CacheEntry = isMemoryStore()
+  ? (createMemoryModel({}) as unknown as typeof mongooseCacheEntry)
+  : mongooseCacheEntry;

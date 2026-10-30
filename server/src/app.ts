@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
+import { isMemoryStore } from "./models/memoryStore.js";
 import { rateLimit } from "express-rate-limit";
 import { fileURLToPath } from "node:url";
 import { authRouter } from "./routes/auth.js";
@@ -50,7 +51,11 @@ export function createApp(
   );
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, db: mongoose.connection.readyState === 1 ? "up" : "down", mockMode: config.mockMode });
+    res.json({
+      ok: true,
+      db: isMemoryStore() ? "memory" : mongoose.connection.readyState === 1 ? "up" : "down",
+      mockMode: config.mockMode,
+    });
   });
   app.use("/api/auth", authRouter(config));
   app.use("/api/knowledge", knowledgeRouter());

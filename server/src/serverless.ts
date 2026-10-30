@@ -1,28 +1,27 @@
-// Vercel serverless entry: wraps the Express app for the demo deployment (MOCK_MODE, no external DB).
-// Each function instance starts its own in-memory MongoDB in /tmp, so demo data is never persisted
-// and is lost when the instance is recycled.
+// Vercel serverless entry: wraps the Express app for the demo deployment.
+// Without MONGODB_URI it uses the plain in-process store (models/memoryStore.ts): no database at all,
+// nothing persists, and data is lost when the function instance is recycled. MOCK_MODE defaults to true.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
-import { createApp } from "./app.js";
-import { loadConfig } from "./config.js";
-import { seedKnowledge } from "./rag/seed.js";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 
 let ready: Promise<Handler> | undefined;
 
 async function init(): Promise<Handler> {
-  const config = loadConfig({ ...process.env, MOCK_MODE: process.env.MOCK_MODE ?? "true" });
-  const uri = process.env.MONGODB_URI;
-  if (uri) {
-    await mongoose.connect(uri);
-  } else {
-    const mongo = await MongoMemoryServer.create({ binary: { downloadDir: "/tmp/mongodb-binaries" } });
-    await mongoose.connect(mongo.getUri("walletlens"));
+  process.env.MOCK_MODE ??= "true";
+  if (!process.env.MONGODB_URI) process.env.WALLETLENS_STORE = "memory";
+  // Imported after the env is set, because the models pick their store at import time.
+  const [{ createApp }, { loadConfig }, { seedKnowledge }] = await Promise.all([
+    import("./app.js"),
+    import("./config.js"),
+    import("./rag/seed.js"),
+  ]);
+  if (process.env.MONGODB_URI) {
+    const { default: mongoose } = await import("mongoose");
+    await mongoose.connect(process.env.MONGODB_URI);
   }
   await seedKnowledge();
-  return createApp(config) as unknown as Handler;
+  return createApp(loadConfig()) as unknown as Handler;
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
